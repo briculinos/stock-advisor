@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+
+# Compiled output (should only be in dist/)
+src/**/*.js
+src/**/*.d.ts
+*.js.map
+
+# Backup files
+*~
+* 2.*
+*copy*
+*backup*
