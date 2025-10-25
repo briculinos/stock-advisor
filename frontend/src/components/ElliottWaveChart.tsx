@@ -74,12 +74,12 @@ const ElliottWaveChart: React.FC<ElliottWaveChartProps> = ({ data }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+    <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
+      <div className="mb-4 md:mb-6">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3 md:mb-2">
           Elliott Wave Analysis - {symbol}
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4">
           <div className="bg-blue-50 p-3 rounded">
             <p className="text-sm text-gray-600">Current Wave</p>
             <p className="text-xl font-bold text-blue-600">{currentWave}</p>
@@ -91,19 +91,21 @@ const ElliottWaveChart: React.FC<ElliottWaveChartProps> = ({ data }) => {
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="mb-6">
-        <ResponsiveContainer width="100%" height={400}>
-          <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+      {/* Chart - Wider on mobile for better readability */}
+      <div className="mb-4 md:mb-[2px] -ml-8 md:mx-0 overflow-x-auto">
+        <div className="min-w-[400px] md:min-w-0 pr-10">
+          <ResponsiveContainer width="100%" height={450} className="h-[50px] md:!h-[450px]">
+            <ComposedChart data={chartData} margin={{ top: 20, right: 35, left: 10, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12 }}
-              interval={Math.floor(chartData.length / 10)}
+              tick={{ fontSize: 11 }}
+              interval={Math.floor(chartData.length / 8)}
+              angle={0}
             />
             <YAxis
               domain={['dataMin - 10', 'dataMax + 10']}
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 11 }}
               tickFormatter={(value) => `${value.toFixed(0)}`}
             />
             <Tooltip content={<CustomTooltip />} />
@@ -157,32 +159,33 @@ const ElliottWaveChart: React.FC<ElliottWaveChartProps> = ({ data }) => {
             ))}
           </ComposedChart>
         </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Fibonacci Levels Table */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">Fibonacci Retracement Levels</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="mb-4 md:mb-6">
+        <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3">Fibonacci Retracement Levels</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           {fibonacciLevels.map((fib) => (
             <div
               key={fib.level}
-              className={`p-3 rounded border ${
+              className={`p-2 md:p-3 rounded border ${
                 [0.382, 0.5, 0.618].includes(fib.level)
                   ? 'bg-blue-50 border-blue-300'
                   : 'bg-gray-50 border-gray-300'
               }`}
             >
               <p className="text-xs text-gray-600">{fib.label}</p>
-              <p className="text-lg font-bold text-gray-900">{fib.price.toFixed(2)}</p>
+              <p className="text-base md:text-lg font-bold text-gray-900">{fib.price.toFixed(2)}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Analysis */}
-      <div className="bg-gray-50 p-4 rounded">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Analysis</h3>
-        <p className="text-sm text-gray-700 whitespace-pre-line">{analysis}</p>
+      <div className="bg-gray-50 p-3 md:p-4 rounded">
+        <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2">Analysis</h3>
+        <p className="text-xs md:text-sm text-gray-700 whitespace-pre-line leading-relaxed">{analysis}</p>
       </div>
 
       {/* Legend */}

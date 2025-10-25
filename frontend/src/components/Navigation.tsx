@@ -86,8 +86,64 @@ const Navigation: React.FC = () => {
           </div>
         </div>
 
-        {/* iPad/Tablet/Mobile Layout (<1920px) - Vertical */}
-        <div className="3xl:hidden py-6 space-y-4">
+        {/* Mobile Phone Layout (<768px) - Compact vertical */}
+        <div className="md:hidden py-4 space-y-3">
+          {/* Logo/Title - Compact */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Stock Advisor<span className="text-blue-600">.</span>
+            </h1>
+            {/* User Info - Compact on mobile */}
+            {isAuthenticated && user && (
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold"
+              >
+                Logout
+              </button>
+            )}
+          </div>
+
+          {/* Subtitle - Smaller on mobile */}
+          <p className="text-xs text-gray-600">AI-powered stock analysis and portfolio tracking</p>
+
+          {/* Navigation Buttons - Full width stacked */}
+          <div className="grid grid-cols-3 gap-2">
+            <Link
+              to="/"
+              className={`px-3 py-2 rounded-lg font-semibold text-sm text-center transition-all duration-200 ${
+                isActive('/')
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+              }`}
+            >
+              Home
+            </Link>
+            <Link
+              to="/insights"
+              className={`px-3 py-2 rounded-lg font-semibold text-sm text-center transition-all duration-200 ${
+                isActive('/insights')
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+              }`}
+            >
+              Insights
+            </Link>
+            <Link
+              to="/moonshots"
+              className={`px-3 py-2 rounded-lg font-semibold text-sm text-center transition-all duration-200 ${
+                isActive('/moonshots')
+                  ? 'bg-purple-600 text-white shadow-lg'
+                  : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+              }`}
+            >
+              Moonshots
+            </Link>
+          </div>
+        </div>
+
+        {/* iPad/Tablet Layout (768px-1920px) - Vertical */}
+        <div className="hidden md:block 3xl:hidden py-6 space-y-4">
           {/* Logo/Title - Left aligned */}
           <div>
             <h1 className="text-4xl font-bold text-gray-900">

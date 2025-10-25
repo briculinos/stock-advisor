@@ -8,6 +8,7 @@ import { rateLimitService } from '../services/rateLimitService';
 export const rateLimitMiddleware = (endpoint: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const username = req.user?.username;
+    const email = req.user?.email;
 
     if (!username) {
       return res.status(401).json({
@@ -16,8 +17,8 @@ export const rateLimitMiddleware = (endpoint: string) => {
       });
     }
 
-    // Check if user can make this request
-    const check = rateLimitService.canMakeRequest(username, endpoint);
+    // Check if user can make this request (pass email for whitelist check)
+    const check = rateLimitService.canMakeRequest(username, endpoint, email);
 
     if (!check.allowed) {
       console.log(`⛔ [RATE LIMIT] Request blocked for ${username} on ${endpoint}: ${check.message}`);

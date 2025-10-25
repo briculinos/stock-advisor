@@ -25,10 +25,23 @@ export class RateLimitService {
   // Default limits
   private readonly DEFAULT_DAILY_LIMIT = 50; // 50 stock analyses per day for test users
 
+  // Whitelisted emails with unlimited access
+  private readonly UNLIMITED_ACCESS_EMAILS = [
+    'bric2073@gmail.com'
+  ];
+
   constructor() {
     this.loadUsage();
     // Clean up old data daily
     this.scheduleCleanup();
+  }
+
+  /**
+   * Check if email has unlimited access
+   */
+  private isUnlimitedAccess(email?: string): boolean {
+    if (!email) return false;
+    return this.UNLIMITED_ACCESS_EMAILS.includes(email.toLowerCase());
   }
 
   /**
@@ -92,7 +105,15 @@ export class RateLimitService {
   /**
    * Check if user can make an API call
    */
-  canMakeRequest(username: string, endpoint: string): { allowed: boolean; remaining: number; message?: string } {
+  canMakeRequest(username: string, endpoint: string, email?: string): { allowed: boolean; remaining: number; message?: string } {
+    // Check if email has unlimited access
+    if (this.isUnlimitedAccess(email)) {
+      return {
+        allowed: true,
+        remaining: 999999 // Unlimited
+      };
+    }
+
     let userUsage = this.usage.get(username);
 
     if (!userUsage) {

@@ -69,17 +69,17 @@ function EnhancedInsightsDisplay({ data }: Props) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Main Recommendation Card */}
-      <div className={`rounded-lg shadow-lg p-6 border-2 ${getRecommendationColor(data.recommendation)}`}>
+      <div className={`rounded-lg shadow-lg p-4 md:p-6 border-2 ${getRecommendationColor(data.recommendation)}`}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-3xl font-bold">{data.symbol}</h2>
-            <p className="text-lg">{data.currency} {data.currentPrice.toFixed(2)}</p>
+            <h2 className="text-2xl md:text-3xl font-bold">{data.symbol}</h2>
+            <p className="text-base md:text-lg">{data.currency} {data.currentPrice.toFixed(2)}</p>
           </div>
           <div className="text-right">
-            <div className="text-4xl font-bold">{data.recommendation}</div>
-            <div className="text-sm mt-1">{data.confidence.toFixed(0)}% Confidence</div>
+            <div className="text-3xl md:text-4xl font-bold">{data.recommendation}</div>
+            <div className="text-xs md:text-sm mt-1">{data.confidence.toFixed(0)}% Confidence</div>
           </div>
         </div>
 
@@ -103,30 +103,30 @@ function EnhancedInsightsDisplay({ data }: Props) {
       </div>
 
       {/* Price Targets */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-xl font-bold mb-4 text-gray-900">Price Targets</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
+        <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-gray-900">Price Targets</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <div className="bg-blue-50 rounded p-3">
             <p className="text-xs text-gray-600 mb-1">Entry</p>
-            <p className="text-xl font-bold text-blue-700">{data.currency} {data.entry.toFixed(2)}</p>
+            <p className="text-lg md:text-xl font-bold text-blue-700">{data.currency} {data.entry.toFixed(2)}</p>
           </div>
           <div className="bg-red-50 rounded p-3">
             <p className="text-xs text-gray-600 mb-1">Stop Loss</p>
-            <p className="text-xl font-bold text-red-700">{data.currency} {data.stop.toFixed(2)}</p>
+            <p className="text-lg md:text-xl font-bold text-red-700">{data.currency} {data.stop.toFixed(2)}</p>
           </div>
           <div className="bg-green-50 rounded p-3">
             <p className="text-xs text-gray-600 mb-1">Target 1</p>
-            <p className="text-xl font-bold text-green-700">{data.currency} {data.target1.toFixed(2)}</p>
+            <p className="text-lg md:text-xl font-bold text-green-700">{data.currency} {data.target1.toFixed(2)}</p>
           </div>
           <div className="bg-green-50 rounded p-3">
             <p className="text-xs text-gray-600 mb-1">Target 2</p>
-            <p className="text-xl font-bold text-green-700">{data.currency} {data.target2.toFixed(2)}</p>
+            <p className="text-lg md:text-xl font-bold text-green-700">{data.currency} {data.target2.toFixed(2)}</p>
           </div>
         </div>
       </div>
 
       {/* Elliott Wave Chart */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white rounded-lg shadow-md p-4 md:p-6">
         <ElliottWaveChart
           data={{
             symbol: data.symbol,
@@ -140,31 +140,6 @@ function EnhancedInsightsDisplay({ data }: Props) {
           }}
         />
       </div>
-
-      {/* News Section */}
-      {data.news && data.news.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold mb-4 text-gray-900">Recent News</h3>
-          <div className="space-y-3">
-            {data.news.slice(0, 5).map((item, idx) => (
-              <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2">
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
-                >
-                  {item.title}
-                </a>
-                <p className="text-xs text-gray-600 mt-1">{item.snippet}</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {new Date(item.publishedAt).toLocaleDateString()}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

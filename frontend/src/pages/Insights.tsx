@@ -54,7 +54,7 @@ function Insights() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-4 md:py-8">
         <div className="grid grid-cols-1 3xl:grid-cols-3 gap-6">
           {/* Left Column - Insights Search */}
           <div className="space-y-6">
@@ -76,27 +76,27 @@ function Insights() {
           {/* Right Column - Insights Display */}
           <div className="3xl:col-span-2">
             {loading && (
-              <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600 text-lg">Generating insights...</p>
+              <div className="bg-white rounded-lg shadow-md p-8 md:p-12 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 md:h-16 md:w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600 text-base md:text-lg font-semibold">Generating insights...</p>
                 <p className="text-gray-500 text-sm mt-2">
-                  Analyzing market trends and generating insights
+                  Analyzing market trends
                 </p>
               </div>
             )}
 
             {!loading && !insights && !error && (
-              <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                <div className="text-6xl mb-4">💡</div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <div className="bg-white rounded-lg shadow-md p-6 md:p-12 text-center">
+                <div className="text-5xl md:text-6xl mb-4">💡</div>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
                   Generate Enhanced Stock Insights
                 </h2>
-                <p className="text-gray-600 mb-4">
+                <p className="text-sm md:text-base text-gray-600 mb-4">
                   Enter a stock symbol to generate comprehensive multi-source analysis
                 </p>
                 <div className="bg-blue-50 rounded-lg p-4 text-left max-w-md mx-auto">
-                  <h3 className="font-semibold text-gray-900 mb-2">Features:</h3>
-                  <ul className="space-y-1 text-sm text-gray-700">
+                  <h3 className="font-semibold text-gray-900 mb-2 text-sm md:text-base">Features:</h3>
+                  <ul className="space-y-1 text-xs md:text-sm text-gray-700">
                     <li>• <strong>Technical Analysis</strong> (40%): RSI, MACD, momentum</li>
                     <li>• <strong>Fundamental Analysis</strong> (25%): Elliott Wave patterns</li>
                     <li>• <strong>Sentiment Analysis</strong> (20%): News and market buzz</li>
@@ -109,12 +109,12 @@ function Insights() {
             )}
 
             {!loading && error && (
-              <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                <div className="text-6xl mb-4">⚠️</div>
-                <h2 className="text-2xl font-bold text-red-600 mb-2">
+              <div className="bg-white rounded-lg shadow-md p-8 md:p-12 text-center">
+                <div className="text-5xl md:text-6xl mb-4">⚠️</div>
+                <h2 className="text-xl md:text-2xl font-bold text-red-600 mb-2">
                   Error
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-sm md:text-base text-gray-600">
                   {error}
                 </p>
               </div>
@@ -126,13 +126,38 @@ function Insights() {
             )}
 
             {/* Analysis Boxes - Show after recommendation on all screens < 1920px (including iPads), hide on 3XL */}
-            <div className="3xl:hidden">
+            <div className="3xl:hidden mt-4 md:mt-6">
               {!loading && insights && (
                 <AnalysisBoxes data={insights} />
               )}
             </div>
           </div>
         </div>
+
+        {/* Recent News - Full width at bottom on ALL devices */}
+        {!loading && insights && insights.news && insights.news.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-4 md:p-6 mt-6">
+            <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4 text-gray-900">Recent News</h3>
+            <div className="space-y-3">
+              {insights.news.slice(0, 5).map((item: any, idx: number) => (
+                <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                  >
+                    {item.title}
+                  </a>
+                  <p className="text-xs text-gray-600 mt-1">{item.snippet}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(item.publishedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

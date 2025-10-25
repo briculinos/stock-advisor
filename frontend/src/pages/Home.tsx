@@ -216,7 +216,7 @@ function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-4 md:py-8">
         {/* Updating company names indicator */}
         {isUpdatingNames && (
           <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-3">
@@ -228,24 +228,24 @@ function Home() {
           <div className="flex justify-end mb-6">
             <button
               onClick={() => setShowAddStockModal(true)}
-              className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg shadow-lg flex items-center gap-2"
+              className="bg-blue-600 text-white px-6 md:px-8 py-3 md:py-4 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors font-semibold text-base md:text-lg shadow-lg flex items-center gap-2"
             >
-              <span className="text-2xl">+</span> Add Stock
+              <span className="text-xl md:text-2xl">+</span> Add Stock
             </button>
           </div>
         )}
 
         {/* Section Controls */}
         {(ownedStocks.length > 0 || followedStocks.length > 0) && (
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex gap-3">
+          <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center mb-4 md:mb-6 gap-3">
+            <div className="flex gap-2 md:gap-3">
               {ownedStocks.length > 0 && (
                 <button
                   onClick={() => setShowOwnedStocks(!showOwnedStocks)}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  className={`px-4 md:px-6 py-3 rounded-lg font-semibold transition-colors text-sm md:text-base ${
                     showOwnedStocks
                       ? 'bg-blue-600 text-white shadow-lg'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-gray-200 text-gray-700 active:bg-gray-300'
                   }`}
                 >
                   My Stocks ({ownedStocks.length})
@@ -254,10 +254,10 @@ function Home() {
               {followedStocks.length > 0 && (
                 <button
                   onClick={() => setShowFollowedStocks(!showFollowedStocks)}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  className={`px-4 md:px-6 py-3 rounded-lg font-semibold transition-colors text-sm md:text-base ${
                     showFollowedStocks
                       ? 'bg-purple-600 text-white shadow-lg'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-gray-200 text-gray-700 active:bg-gray-300'
                   }`}
                 >
                   Followed ({followedStocks.length})
@@ -266,9 +266,9 @@ function Home() {
             </div>
             <button
               onClick={() => setShowAddStockModal(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center gap-2"
+              className="bg-blue-600 text-white px-4 md:px-6 py-3 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors font-semibold text-sm md:text-base flex items-center justify-center gap-2"
             >
-              <span className="text-xl">+</span> Add Stock
+              <span className="text-lg md:text-xl">+</span> Add Stock
             </button>
           </div>
         )}
