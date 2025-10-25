@@ -27,8 +27,12 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/stock', stockRoutes);
 
-// Health check
+// Health check endpoints
 app.get('/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Stock Advisor API is running' });
+});
+
+app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Stock Advisor API is running' });
 });
 

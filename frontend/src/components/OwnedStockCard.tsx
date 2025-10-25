@@ -51,7 +51,7 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
     if (!editMode) {
       const fetchChartData = async () => {
         try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/stock/history/${symbol}?period=1mo`);
+          const response = await fetch(`/api/stock/history/${symbol}?period=1mo`);
           const data = await response.json();
           setChartData(data);
         } catch (error) {
@@ -68,7 +68,7 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
       setLoadingPrice(true);
       try {
         // Fetch historical price for this date
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/stock/historical-price/${symbol}?date=${date}`);
+        const response = await fetch(`/api/stock/historical-price/${symbol}?date=${date}`);
         const data = await response.json();
         setPurchasePrice(data.price);
       } catch (error) {

@@ -42,8 +42,7 @@ const StockChart: React.FC<StockChartProps> = ({ symbol, currency }) => {
   const fetchChartData = async () => {
     try {
       setLoading(true);
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-      const response = await axios.get(`${API_BASE_URL}/api/stock/history/${symbol}?period=${period}`);
+      const response = await axios.get(`/api/stock/history/${symbol}?period=${period}`);
       setChartData(response.data);
     } catch (error) {
       console.error('Error fetching chart data:', error);

@@ -11,7 +11,7 @@ interface EnhancedInsight {
   currency: string;
 
   // Main recommendation
-  recommendation: 'BUY' | 'HOLD' | 'SELL';
+  recommendation: 'BUY' | 'HOLD' | 'SELL' | 'AVOID';
   confidence: number;
   compositeScore: number;
 

@@ -18,6 +18,7 @@ function Auth() {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [regInviteCode, setRegInviteCode] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +54,7 @@ function Auth() {
       return;
     }
 
-    const result = await register(regUsername, regEmail, regPassword);
+    const result = await register(regUsername, regEmail, regPassword, regInviteCode);
 
     if (result.success) {
       navigate('/');
@@ -218,6 +219,22 @@ function Auth() {
                   required
                   disabled={loading}
                 />
+              </div>
+
+              <div>
+                <label htmlFor="regInviteCode" className="block text-sm font-medium text-gray-700 mb-1">
+                  Invite Code <span className="text-gray-500">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  id="regInviteCode"
+                  value={regInviteCode}
+                  onChange={(e) => setRegInviteCode(e.target.value.toUpperCase())}
+                  placeholder="BETA-XXXXXX"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                  disabled={loading}
+                />
+                <p className="text-xs text-gray-500 mt-1">Required if your email is not whitelisted</p>
               </div>
 
               <button

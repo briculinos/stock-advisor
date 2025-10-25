@@ -55,8 +55,8 @@ function Insights() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Insights Search and Analysis Boxes */}
+        <div className="grid grid-cols-1 3xl:grid-cols-3 gap-6">
+          {/* Left Column - Insights Search */}
           <div className="space-y-6">
             <InsightsSearch
               onSearch={handleSearch}
@@ -65,13 +65,16 @@ function Insights() {
               initialCompanyName={initialStock?.companyName}
               disableAutocomplete={disableAutocomplete}
             />
-            {!loading && insights && (
-              <AnalysisBoxes data={insights} />
-            )}
+            {/* Analysis Boxes - Only show on 3XL screens (1920px+) in left column */}
+            <div className="hidden 3xl:block">
+              {!loading && insights && (
+                <AnalysisBoxes data={insights} />
+              )}
+            </div>
           </div>
 
           {/* Right Column - Insights Display */}
-          <div className="lg:col-span-2">
+          <div className="3xl:col-span-2">
             {loading && (
               <div className="bg-white rounded-lg shadow-md p-12 text-center">
                 <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
@@ -117,9 +120,17 @@ function Insights() {
               </div>
             )}
 
+            {/* Main Recommendation - Show first on mobile/tablet/iPad */}
             {!loading && insights && (
               <EnhancedInsightsDisplay data={insights} />
             )}
+
+            {/* Analysis Boxes - Show after recommendation on all screens < 1920px (including iPads), hide on 3XL */}
+            <div className="3xl:hidden">
+              {!loading && insights && (
+                <AnalysisBoxes data={insights} />
+              )}
+            </div>
           </div>
         </div>
       </main>

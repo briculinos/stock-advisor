@@ -9,6 +9,7 @@ import { SymbolLookupService } from '../services/symbolLookupService.js';
 import { MoonshotAnalysisService } from '../services/moonshotAnalysisService.js';
 import { PortfolioItem } from '../types/index.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
 
 const router = Router();
 
@@ -70,8 +71,8 @@ router.get('/search-symbol', async (req: Request, res: Response) => {
   }
 });
 
-// Analyze a stock (requires authentication)
-router.post('/analyze', authenticateToken, async (req: Request, res: Response) => {
+// Analyze a stock (requires authentication + rate limiting)
+router.post('/analyze', authenticateToken, rateLimitMiddleware('stock_analyze'), async (req: Request, res: Response) => {
   try {
     const { symbol, companyName } = req.body;
 
@@ -209,8 +210,8 @@ router.get('/history/:symbol', async (req: Request, res: Response) => {
   }
 });
 
-// Get Elliott Wave analysis with Fibonacci levels (requires authentication)
-router.get('/elliott-wave/:symbol', authenticateToken, async (req: Request, res: Response) => {
+// Get Elliott Wave analysis with Fibonacci levels (requires authentication + rate limiting)
+router.get('/elliott-wave/:symbol', authenticateToken, rateLimitMiddleware('elliott_wave'), async (req: Request, res: Response) => {
   try {
     const { symbol } = req.params;
     console.log(`Analyzing Elliott Wave for ${symbol}`);
@@ -225,8 +226,8 @@ router.get('/elliott-wave/:symbol', authenticateToken, async (req: Request, res:
   }
 });
 
-// Get enhanced insights (multi-source fusion analysis) (requires authentication)
-router.post('/enhanced-insights', authenticateToken, async (req: Request, res: Response) => {
+// Get enhanced insights (multi-source fusion analysis) (requires authentication + rate limiting)
+router.post('/enhanced-insights', authenticateToken, rateLimitMiddleware('enhanced_insights'), async (req: Request, res: Response) => {
   try {
     const { symbol, companyName } = req.body;
 
@@ -347,8 +348,8 @@ router.get('/exchange-rate/:currency', async (req: Request, res: Response) => {
   }
 });
 
-// Get moonshot candidates (requires authentication)
-router.get('/moonshots', authenticateToken, async (req: Request, res: Response) => {
+// Get moonshot candidates (requires authentication + rate limiting)
+router.get('/moonshots', authenticateToken, rateLimitMiddleware('moonshots'), async (req: Request, res: Response) => {
   try {
     console.log('Finding moonshot candidates...');
 

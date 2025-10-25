@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { authService } from '../services/authService';
 import { authenticateToken } from '../middleware/authMiddleware';
+import { rateLimitService } from '../services/rateLimitService';
 
 const router = express.Router();
 
@@ -10,11 +11,11 @@ const router = express.Router();
  */
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, inviteCode } = req.body;
 
-    console.log(`📝 [AUTH] Registration attempt for username: ${username}`);
+    console.log(`📝 [AUTH] Registration attempt for username: ${username}${inviteCode ? ` with invite code: ${inviteCode}` : ''}`);
 
-    const result = await authService.register(username, email, password);
+    const result = await authService.register(username, email, password, inviteCode);
 
     if (result.success) {
       res.status(201).json({
@@ -149,6 +150,34 @@ router.get('/stats', authenticateToken, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching auth stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+/**
+ * GET /api/auth/usage
+ * Get current user's API usage statistics
+ */
+router.get('/usage', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const username = req.user?.username;
+    if (!username) {
+      return res.status(400).json({ error: 'Username not found' });
+    }
+
+    const todayUsage = rateLimitService.getTodayUsage(username);
+    const userStats = rateLimitService.getUserStats(username);
+
+    res.json({
+      success: true,
+      usage: {
+        today: todayUsage,
+        totalAllTime: userStats?.totalApiCalls || 0,
+        history: userStats?.usageHistory.slice(-7) || [] // Last 7 days
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching usage stats:', error);
+    res.status(500).json({ error: 'Failed to fetch usage stats' });
   }
 });
 

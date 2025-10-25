@@ -68,7 +68,7 @@ function Moonshots() {
 
   const loadChartData = async (symbol: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/stock/history/${symbol}?period=1mo`);
+      const response = await fetch(`/api/stock/history/${symbol}?period=1mo`);
       const data = await response.json();
       setChartData(data);
     } catch (err) {

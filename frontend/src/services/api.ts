@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { StockAnalysis, StockResearchData, PortfolioItem } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+// Use relative URLs - nginx will proxy /api requests to the backend
+const API_BASE_URL = process.env.REACT_APP_API_URL || '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -28,7 +28,7 @@ const FollowedStockCard: React.FC<FollowedStockCardProps> = ({
   useEffect(() => {
     const fetchChartData = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/stock/history/${symbol}?period=1mo`);
+        const response = await fetch(`/api/stock/history/${symbol}?period=1mo`);
         const data = await response.json();
         setChartData(data);
       } catch (error) {

@@ -1,11 +1,11 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
+import { inviteCodeService } from './inviteCodeService';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// CommonJS globals
+declare const __dirname: string;
 
 interface User {
   id: string;
@@ -175,7 +175,7 @@ export class AuthService {
   /**
    * Register a new user
    */
-  async register(username: string, email: string, password: string): Promise<{ success: boolean; message: string; token?: string; user?: any }> {
+  async register(username: string, email: string, password: string, inviteCode?: string): Promise<{ success: boolean; message: string; token?: string; user?: any }> {
     try {
       // Validation
       if (!username || username.length < 3) {
@@ -190,10 +190,26 @@ export class AuthService {
         return { success: false, message: 'Password must be at least 6 characters' };
       }
 
-      // Check if email is whitelisted
-      if (!this.isEmailWhitelisted(email)) {
-        console.log(`⛔ [AUTH] Registration blocked - Email "${email}" is not whitelisted`);
-        return { success: false, message: 'This email is not authorized to register. Please contact the administrator.' };
+      // Validate invite code (required unless email is whitelisted)
+      const isWhitelisted = this.isEmailWhitelisted(email);
+
+      if (!isWhitelisted) {
+        // Invite code is required
+        if (!inviteCode) {
+          console.log(`⛔ [AUTH] Registration blocked - No invite code provided for ${email}`);
+          return { success: false, message: 'An invite code is required to register' };
+        }
+
+        // Validate the invite code
+        const codeValidation = inviteCodeService.useCode(inviteCode, username);
+        if (!codeValidation.valid) {
+          console.log(`⛔ [AUTH] Registration blocked - Invalid invite code: ${inviteCode}`);
+          return { success: false, message: codeValidation.message };
+        }
+
+        console.log(`✅ [AUTH] Valid invite code used: ${inviteCode} by ${username}`);
+      } else {
+        console.log(`✅ [AUTH] Email ${email} is whitelisted, bypassing invite code requirement`);
       }
 
       // Check if user already exists
