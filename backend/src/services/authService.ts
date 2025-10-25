@@ -27,14 +27,58 @@ interface LoginAttempt {
 export class AuthService {
   private users: Map<string, User> = new Map();
   private loginAttempts: LoginAttempt[] = [];
+  private whitelistedEmails: Set<string> = new Set();
   private readonly usersFilePath = join(__dirname, '../../data/users.json');
   private readonly logsFilePath = join(__dirname, '../../data/auth-logs.json');
+  private readonly whitelistFilePath = join(__dirname, '../../data/email-whitelist.json');
   private readonly JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
   private readonly JWT_EXPIRES_IN = '7d'; // 7 days
 
   constructor() {
     this.loadUsers();
     this.loadLogs();
+    this.loadWhitelist();
+  }
+
+  /**
+   * Load whitelisted emails from environment variable or file
+   */
+  private loadWhitelist() {
+    try {
+      // First, try to load from environment variable
+      const envWhitelist = process.env.WHITELISTED_EMAILS;
+      if (envWhitelist) {
+        const emails = envWhitelist.split(',').map(e => e.trim().toLowerCase());
+        this.whitelistedEmails = new Set(emails);
+        console.log(`✅ Loaded ${this.whitelistedEmails.size} whitelisted emails from environment`);
+        return;
+      }
+
+      // If no env variable, try to load from file
+      if (existsSync(this.whitelistFilePath)) {
+        const data = readFileSync(this.whitelistFilePath, 'utf-8');
+        const emails = JSON.parse(data);
+        this.whitelistedEmails = new Set(emails.map((e: string) => e.toLowerCase()));
+        console.log(`✅ Loaded ${this.whitelistedEmails.size} whitelisted emails from file`);
+      } else {
+        console.log('⚠️  No email whitelist found. All emails will be allowed to register.');
+        console.log('   Set WHITELISTED_EMAILS environment variable or create data/email-whitelist.json');
+      }
+    } catch (error) {
+      console.error('Error loading whitelist:', error);
+      console.log('⚠️  Email whitelist disabled. All emails will be allowed to register.');
+    }
+  }
+
+  /**
+   * Check if an email is whitelisted
+   */
+  private isEmailWhitelisted(email: string): boolean {
+    // If no whitelist is configured, allow all emails
+    if (this.whitelistedEmails.size === 0) {
+      return true;
+    }
+    return this.whitelistedEmails.has(email.toLowerCase());
   }
 
   /**
@@ -144,6 +188,12 @@ export class AuthService {
 
       if (!password || password.length < 6) {
         return { success: false, message: 'Password must be at least 6 characters' };
+      }
+
+      // Check if email is whitelisted
+      if (!this.isEmailWhitelisted(email)) {
+        console.log(`⛔ [AUTH] Registration blocked - Email "${email}" is not whitelisted`);
+        return { success: false, message: 'This email is not authorized to register. Please contact the administrator.' };
       }
 
       // Check if user already exists
