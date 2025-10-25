@@ -8,6 +8,7 @@ import { EnhancedInsightsService } from '../services/enhancedInsightsService.js'
 import { SymbolLookupService } from '../services/symbolLookupService.js';
 import { MoonshotAnalysisService } from '../services/moonshotAnalysisService.js';
 import { PortfolioItem } from '../types/index.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -69,8 +70,8 @@ router.get('/search-symbol', async (req: Request, res: Response) => {
   }
 });
 
-// Analyze a stock
-router.post('/analyze', async (req: Request, res: Response) => {
+// Analyze a stock (requires authentication)
+router.post('/analyze', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { symbol, companyName } = req.body;
 
@@ -101,13 +102,13 @@ router.post('/analyze', async (req: Request, res: Response) => {
   }
 });
 
-// Get portfolio
-router.get('/portfolio', (req: Request, res: Response) => {
+// Get portfolio (requires authentication)
+router.get('/portfolio', authenticateToken, (req: Request, res: Response) => {
   res.json(portfolio);
 });
 
-// Add to portfolio
-router.post('/portfolio', (req: Request, res: Response) => {
+// Add to portfolio (requires authentication)
+router.post('/portfolio', authenticateToken, (req: Request, res: Response) => {
   try {
     const { symbol, shares, purchasePrice, purchaseDate } = req.body;
 
@@ -130,8 +131,8 @@ router.post('/portfolio', (req: Request, res: Response) => {
   }
 });
 
-// Remove from portfolio
-router.delete('/portfolio/:symbol', (req: Request, res: Response) => {
+// Remove from portfolio (requires authentication)
+router.delete('/portfolio/:symbol', authenticateToken, (req: Request, res: Response) => {
   const { symbol } = req.params;
   const initialLength = portfolio.length;
   portfolio = portfolio.filter(item => item.symbol !== symbol.toUpperCase());
@@ -208,8 +209,8 @@ router.get('/history/:symbol', async (req: Request, res: Response) => {
   }
 });
 
-// Get Elliott Wave analysis with Fibonacci levels
-router.get('/elliott-wave/:symbol', async (req: Request, res: Response) => {
+// Get Elliott Wave analysis with Fibonacci levels (requires authentication)
+router.get('/elliott-wave/:symbol', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { symbol } = req.params;
     console.log(`Analyzing Elliott Wave for ${symbol}`);
@@ -224,8 +225,8 @@ router.get('/elliott-wave/:symbol', async (req: Request, res: Response) => {
   }
 });
 
-// Get enhanced insights (multi-source fusion analysis)
-router.post('/enhanced-insights', async (req: Request, res: Response) => {
+// Get enhanced insights (multi-source fusion analysis) (requires authentication)
+router.post('/enhanced-insights', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { symbol, companyName } = req.body;
 
@@ -346,8 +347,8 @@ router.get('/exchange-rate/:currency', async (req: Request, res: Response) => {
   }
 });
 
-// Get moonshot candidates
-router.get('/moonshots', async (req: Request, res: Response) => {
+// Get moonshot candidates (requires authentication)
+router.get('/moonshots', authenticateToken, async (req: Request, res: Response) => {
   try {
     console.log('Finding moonshot candidates...');
 
