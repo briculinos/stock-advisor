@@ -130,7 +130,6 @@ function AnalysisBoxes({ data }: Props) {
         <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-700 italic">
           {data.technical.explanation}
         </div>
-        <div className="mt-2 text-xs text-gray-500">Weight: 40%</div>
       </div>
 
       {/* Fundamental Analysis */}
@@ -159,7 +158,6 @@ function AnalysisBoxes({ data }: Props) {
         <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-700 italic">
           {data.fundamental.explanation}
         </div>
-        <div className="mt-2 text-xs text-gray-500">Weight: 25%</div>
       </div>
 
       {/* Sentiment Analysis */}
@@ -200,7 +198,6 @@ function AnalysisBoxes({ data }: Props) {
         <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-700 italic">
           {data.sentiment.explanation}
         </div>
-        <div className="mt-2 text-xs text-gray-500">Weight: 20%</div>
       </div>
 
       {/* Macro Analysis */}
@@ -224,7 +221,6 @@ function AnalysisBoxes({ data }: Props) {
         <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-gray-700 italic">
           {data.macro.explanation}
         </div>
-        <div className="mt-2 text-xs text-gray-500">Weight: 15%</div>
       </div>
     </div>
   );
