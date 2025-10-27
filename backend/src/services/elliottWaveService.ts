@@ -401,10 +401,12 @@ export class ElliottWaveService {
    */
   async analyzeElliottWave(symbol: string, sentimentScore?: number, macroScore?: number): Promise<ElliottWaveAnalysis> {
     try {
-      // Fetch historical data (1 month with 4h candles for daily/swing trading)
+      // Fetch historical data (1 month with daily candles for swing trading)
       const priceData = await this.fetchHistoricalData(symbol, '1mo');
 
-      if (priceData.length < 30) {
+      // With 1 month of daily data, we typically get 20-22 trading days
+      // Require minimum 15 data points for swing trading analysis
+      if (priceData.length < 15) {
         throw new Error('Insufficient data for Elliott Wave analysis');
       }
 
