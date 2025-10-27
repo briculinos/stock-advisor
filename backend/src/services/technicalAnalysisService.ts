@@ -26,8 +26,9 @@ interface TechnicalIndicators {
 export class TechnicalAnalysisService {
   /**
    * Calculate RSI (Relative Strength Index)
+   * Using 7-day period for swing trading (catches turns faster)
    */
-  calculateRSI(prices: number[], period: number = 14): number {
+  calculateRSI(prices: number[], period: number = 7): number {
     if (prices.length < period + 1) {
       return 50; // Default neutral
     }
@@ -69,11 +70,12 @@ export class TechnicalAnalysisService {
 
   /**
    * Calculate MACD (Moving Average Convergence Divergence)
+   * Using 8/21/5 for swing trading (reacts earlier than 12/26/9)
    */
   calculateMACD(prices: number[]): { macd: number; signal: number; histogram: number } {
-    const fastPeriod = 12;
-    const slowPeriod = 26;
-    const signalPeriod = 9;
+    const fastPeriod = 8;
+    const slowPeriod = 21;
+    const signalPeriod = 5;
 
     if (prices.length < slowPeriod) {
       return { macd: 0, signal: 0, histogram: 0 };
@@ -116,8 +118,9 @@ export class TechnicalAnalysisService {
 
   /**
    * Calculate momentum (rate of change)
+   * Using 5-day period (one trading week) for swing trading
    */
-  calculateMomentum(prices: number[], period: number = 10): number {
+  calculateMomentum(prices: number[], period: number = 5): number {
     if (prices.length < period) {
       return 0;
     }
@@ -130,14 +133,15 @@ export class TechnicalAnalysisService {
 
   /**
    * Calculate pivot points for support and resistance
+   * Using 12 data points for daily/swing trading (fresh levels)
    */
   calculatePivotPoints(priceData: PricePoint[]): { pivot: number; support: number[]; resistance: number[] } {
     if (priceData.length < 1) {
       return { pivot: 0, support: [], resistance: [] };
     }
 
-    // Use recent data for pivot calculation
-    const recent = priceData.slice(-20);
+    // Use recent data for pivot calculation (12 points for swing trading)
+    const recent = priceData.slice(-12);
     const high = Math.max(...recent.map(p => p.price));
     const low = Math.min(...recent.map(p => p.price));
     const close = recent[recent.length - 1].price;
@@ -162,8 +166,9 @@ export class TechnicalAnalysisService {
 
   /**
    * Find local minima and maxima for support/resistance
+   * Using 3-day window for daily trading (breakouts/retests within days)
    */
-  findLocalExtremes(priceData: PricePoint[], window: number = 5): { support: number[]; resistance: number[] } {
+  findLocalExtremes(priceData: PricePoint[], window: number = 3): { support: number[]; resistance: number[] } {
     if (priceData.length < window * 2) {
       return { support: [], resistance: [] };
     }

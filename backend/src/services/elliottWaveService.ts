@@ -39,10 +39,11 @@ interface ElliottWaveAnalysis {
 export class ElliottWaveService {
   /**
    * Fetch historical price data from Yahoo Finance
+   * Using 4h candles for daily/swing trading
    */
-  async fetchHistoricalData(symbol: string, period: string = '6mo'): Promise<PricePoint[]> {
+  async fetchHistoricalData(symbol: string, period: string = '1mo'): Promise<PricePoint[]> {
     try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${period}&interval=1d`;
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${period}&interval=4h`;
       const response = await axios.get(url);
 
       const result = response.data?.chart?.result?.[0];
@@ -69,8 +70,9 @@ export class ElliottWaveService {
 
   /**
    * Detect pivot points (local maxima and minima)
+   * Using 3-day window for daily trading
    */
-  private detectPivots(priceData: PricePoint[], window: number = 5): number[] {
+  private detectPivots(priceData: PricePoint[], window: number = 3): number[] {
     const pivots: number[] = [];
 
     for (let i = window; i < priceData.length - window; i++) {
@@ -399,8 +401,8 @@ export class ElliottWaveService {
    */
   async analyzeElliottWave(symbol: string, sentimentScore?: number, macroScore?: number): Promise<ElliottWaveAnalysis> {
     try {
-      // Fetch historical data (3 months for more recent pattern focus)
-      const priceData = await this.fetchHistoricalData(symbol, '3mo');
+      // Fetch historical data (1 month with 4h candles for daily/swing trading)
+      const priceData = await this.fetchHistoricalData(symbol, '1mo');
 
       if (priceData.length < 30) {
         throw new Error('Insufficient data for Elliott Wave analysis');
@@ -409,14 +411,14 @@ export class ElliottWaveService {
       // Calculate ATR for volatility-normalized thresholds
       const atr = this.calculateATR(priceData, 14);
 
-      // Detect pivot points
-      const pivots = this.detectPivots(priceData, 5);
+      // Detect pivot points (3-day window for swing trading)
+      const pivots = this.detectPivots(priceData, 3);
 
       // Identify waves
       const waves = this.identifyWaves(priceData, pivots);
 
-      // Calculate Fibonacci levels based on recent high and low
-      const recentPrices = priceData.slice(-60).map(p => p.price);
+      // Calculate Fibonacci levels based on recent high and low (20 days for swing trading)
+      const recentPrices = priceData.slice(-20).map(p => p.price);
       const recentHigh = Math.max(...recentPrices);
       const recentLow = Math.min(...recentPrices);
       const fibonacciLevels = this.calculateFibonacciLevels(recentHigh, recentLow);
