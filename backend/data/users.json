@@ -1,0 +1,24 @@
+[
+  {
+    "id": "user_1761387350748_po0myr601",
+    "username": "briculinos",
+    "email": "bric2073@gmail.com",
+    "passwordHash": "$2b$10$iuZi.0G7axW6lGdFxzlqduQqk9lxwAXz7hdZDqm4PK9bHM8iRuese",
+    "createdAt": "2025-10-25T10:15:50.748Z",
+    "lastLogin": "2025-10-25T13:15:14.891Z"
+  },
+  {
+    "id": "user_1761390947659_gki55ph91",
+    "username": "Bric1",
+    "email": "bogdantds@gmail.com",
+    "passwordHash": "$2b$10$IBE4pxU/dAccTh4oeWqKf.qkJ5aOAPj1DFj3Vbx17JZMwd1C1OB8W",
+    "createdAt": "2025-10-25T11:15:47.659Z"
+  },
+  {
+    "id": "user_1761498416961_rh4b86h6z",
+    "username": "Marc Tudosoiu",
+    "email": "marcsttud@gmail.com",
+    "passwordHash": "$2b$10$Yx535HOseXOAtu3LzsokT.oOh7eodbeJDKKresKlsRxnKvWyVr5bC",
+    "createdAt": "2025-10-26T17:06:56.961Z"
+  }
+]

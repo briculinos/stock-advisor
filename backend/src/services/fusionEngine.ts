@@ -42,12 +42,12 @@ interface FusionOutput {
 }
 
 export class FusionEngine {
-  // Base Weights: 40% technical, 25% fundamental, 20% sentiment, 15% macro
+  // Base Weights: 50% technical, 20% fundamental, 20% sentiment, 10% macro
   private readonly BASE_WEIGHTS = {
-    technical: 0.40,
-    fundamental: 0.25,
+    technical: 0.50,
+    fundamental: 0.20,
     sentiment: 0.20,
-    macro: 0.15
+    macro: 0.10
   };
 
   /**
@@ -237,23 +237,22 @@ export class FusionEngine {
 
     // Adjustment 1: Stock type adaptation
     if (stockType === 'growth') {
-      // Growth/Tech stocks: Sentiment + Macro gain +10%
-      weights.sentiment += 0.10;
-      weights.macro += 0.10;
-      weights.technical -= 0.10;
+      // Growth/Tech stocks: Sentiment +5%, Macro +5%, Fundamental -10%
+      weights.sentiment += 0.05;
+      weights.macro += 0.05;
       weights.fundamental -= 0.10;
     } else if (stockType === 'defensive') {
-      // Defensive/Dividend stocks: Fundamental + Macro gain +15%
+      // Defensive/Dividend stocks: Fundamental +15%, Macro +10%, Sentiment -15%, Technical -10%
       weights.fundamental += 0.15;
-      weights.macro += 0.15;
-      weights.technical -= 0.15;
+      weights.macro += 0.10;
       weights.sentiment -= 0.15;
+      weights.technical -= 0.10;
     }
 
     // Adjustment 2: High volatility regime (VIX > 25)
     if (vixLevel > 25) {
-      weights.technical -= 0.15;
-      weights.macro += 0.15;
+      weights.technical -= 0.10;
+      weights.macro += 0.10;
     }
 
     // Adjustment 3: Critical risk detected - emphasize fundamentals
@@ -475,9 +474,9 @@ export class FusionEngine {
    * Get detailed breakdown text
    */
   getBreakdownText(breakdown: FusionOutput['breakdown']): string {
-    return `Technical: ${breakdown.technical.toFixed(0)}/100 (40% weight) | ` +
-           `Fundamental: ${breakdown.fundamental.toFixed(0)}/100 (25% weight) | ` +
+    return `Technical: ${breakdown.technical.toFixed(0)}/100 (50% weight) | ` +
+           `Fundamental: ${breakdown.fundamental.toFixed(0)}/100 (20% weight) | ` +
            `Sentiment: ${breakdown.sentiment.toFixed(0)}/100 (20% weight) | ` +
-           `Macro: ${breakdown.macro.toFixed(0)}/100 (15% weight)`;
+           `Macro: ${breakdown.macro.toFixed(0)}/100 (10% weight)`;
   }
 }

@@ -104,9 +104,9 @@ const ElliottWaveChart: React.FC<ElliottWaveChartProps> = ({ data }) => {
               angle={0}
             />
             <YAxis
-              domain={['dataMin - 10', 'dataMax + 10']}
+              domain={[(dataMin: number) => dataMin * 0.95, (dataMax: number) => dataMax * 1.05]}
               tick={{ fontSize: 11 }}
-              tickFormatter={(value) => `${value.toFixed(0)}`}
+              tickFormatter={(value) => `${value.toFixed(2)}`}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend />

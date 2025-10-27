@@ -1,0 +1,16 @@
+[
+  {
+    "username": "briculinos",
+    "timestamp": "2025-10-27T09:58:23.483Z",
+    "success": false,
+    "ip": "::1",
+    "userAgent": "curl/8.7.1"
+  },
+  {
+    "username": "test",
+    "timestamp": "2025-10-27T13:27:33.665Z",
+    "success": false,
+    "ip": "::1",
+    "userAgent": "curl/8.7.1"
+  }
+]
