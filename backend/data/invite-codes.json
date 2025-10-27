@@ -1,0 +1,52 @@
+[
+  {
+    "code": "BETA-G71NTT",
+    "createdAt": "2025-10-27T13:42:48.651Z",
+    "createdBy": "admin",
+    "maxUses": 1,
+    "currentUses": 0,
+    "isActive": true,
+    "notes": "Beta tester",
+    "expiresAt": "2025-11-26T13:42:48.651Z"
+  },
+  {
+    "code": "BETA-KW80XW",
+    "createdAt": "2025-10-27T13:42:48.652Z",
+    "createdBy": "admin",
+    "maxUses": 1,
+    "currentUses": 0,
+    "isActive": true,
+    "notes": "Beta tester",
+    "expiresAt": "2025-11-26T13:42:48.652Z"
+  },
+  {
+    "code": "BETA-E2RI95",
+    "createdAt": "2025-10-27T13:42:48.652Z",
+    "createdBy": "admin",
+    "maxUses": 1,
+    "currentUses": 0,
+    "isActive": true,
+    "notes": "Beta tester",
+    "expiresAt": "2025-11-26T13:42:48.652Z"
+  },
+  {
+    "code": "BETA-VPTAFN",
+    "createdAt": "2025-10-27T13:42:48.652Z",
+    "createdBy": "admin",
+    "maxUses": 1,
+    "currentUses": 0,
+    "isActive": true,
+    "notes": "Beta tester",
+    "expiresAt": "2025-11-26T13:42:48.652Z"
+  },
+  {
+    "code": "BETA-49OBCQ",
+    "createdAt": "2025-10-27T13:42:48.652Z",
+    "createdBy": "admin",
+    "maxUses": 1,
+    "currentUses": 0,
+    "isActive": true,
+    "notes": "Beta tester",
+    "expiresAt": "2025-11-26T13:42:48.652Z"
+  }
+]

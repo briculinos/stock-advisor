@@ -1,14 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Navigation from './components/Navigation';
 import ProtectedRoute from './components/ProtectedRoute';
+import RateLimitModal from './components/RateLimitModal';
 import Home from './pages/Home';
 import Insights from './pages/Insights';
 import Moonshots from './pages/Moonshots';
 import Auth from './pages/Auth';
 
 function App() {
+  const [showRateLimitModal, setShowRateLimitModal] = useState(false);
+
+  useEffect(() => {
+    const handleRateLimitReached = () => {
+      setShowRateLimitModal(true);
+    };
+
+    window.addEventListener('rateLimitReached', handleRateLimitReached);
+
+    return () => {
+      window.removeEventListener('rateLimitReached', handleRateLimitReached);
+    };
+  }, []);
+
   return (
     <Router>
       <AuthProvider>
@@ -32,6 +47,11 @@ function App() {
               </p>
             </div>
           </footer>
+
+          {/* Rate Limit Modal */}
+          {showRateLimitModal && (
+            <RateLimitModal onClose={() => setShowRateLimitModal(false)} />
+          )}
         </div>
       </AuthProvider>
     </Router>

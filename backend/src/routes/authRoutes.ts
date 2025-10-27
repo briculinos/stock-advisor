@@ -181,4 +181,57 @@ router.get('/usage', authenticateToken, async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/auth/feedback
+ * Record user feedback when they hit rate limit
+ */
+router.post('/feedback', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { interestedInPaying } = req.body;
+    const username = req.user?.username;
+    const email = req.user?.email;
+
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        error: 'Username not found'
+      });
+    }
+
+    // Log feedback to file
+    const fs = require('fs');
+    const path = require('path');
+    const feedbackPath = path.join(__dirname, '../../data/user-feedback.json');
+
+    let feedbackData = [];
+    if (fs.existsSync(feedbackPath)) {
+      feedbackData = JSON.parse(fs.readFileSync(feedbackPath, 'utf-8'));
+    }
+
+    feedbackData.push({
+      username,
+      email,
+      interestedInPaying,
+      timestamp: new Date().toISOString(),
+      ip: req.ip || req.socket.remoteAddress,
+      userAgent: req.headers['user-agent']
+    });
+
+    fs.writeFileSync(feedbackPath, JSON.stringify(feedbackData, null, 2));
+
+    console.log(`💬 [FEEDBACK] User ${username} (${email}) - Interested in paying: ${interestedInPaying ? 'YES' : 'NO'}`);
+
+    res.json({
+      success: true,
+      message: 'Feedback recorded successfully'
+    });
+  } catch (error) {
+    console.error('Error recording feedback:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to record feedback'
+    });
+  }
+});
+
 export default router;

@@ -25,7 +25,7 @@ api.interceptors.request.use(
   }
 );
 
-// Handle 401 responses (unauthorized) - redirect to login
+// Handle 401 and 429 responses
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -34,6 +34,9 @@ api.interceptors.response.use(
       localStorage.removeItem('authToken');
       localStorage.removeItem('authUser');
       window.location.href = '/auth';
+    } else if (error.response?.status === 429) {
+      // Rate limit reached - dispatch custom event
+      window.dispatchEvent(new CustomEvent('rateLimitReached'));
     }
     return Promise.reject(error);
   }
@@ -104,3 +107,10 @@ export const getMoonshotCandidates = async () => {
   const response = await api.get('/api/stock/moonshots');
   return response.data.candidates;
 };
+
+export const sendFeedback = async (interestedInPaying: boolean) => {
+  const response = await api.post('/api/auth/feedback', { interestedInPaying });
+  return response.data;
+};
+
+export { api };
