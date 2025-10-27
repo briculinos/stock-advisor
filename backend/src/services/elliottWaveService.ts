@@ -39,11 +39,11 @@ interface ElliottWaveAnalysis {
 export class ElliottWaveService {
   /**
    * Fetch historical price data from Yahoo Finance
-   * Using 4h candles for daily/swing trading
+   * Using daily candles with 1-month period for swing trading
    */
   async fetchHistoricalData(symbol: string, period: string = '1mo'): Promise<PricePoint[]> {
     try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${period}&interval=4h`;
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${period}&interval=1d`;
       const response = await axios.get(url);
 
       const result = response.data?.chart?.result?.[0];
