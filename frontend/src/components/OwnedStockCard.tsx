@@ -210,18 +210,6 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Purchase Date
-            </label>
-            <input
-              type="date"
-              value={purchaseDate}
-              onChange={(e) => handleDateChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              max={new Date().toISOString().split('T')[0]}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
               Purchase Price ({currency})
             </label>
             <div className="relative">
@@ -245,6 +233,18 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
                 Price automatically loaded for {purchaseDate}
               </p>
             )}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Purchase Date
+            </label>
+            <input
+              type="date"
+              value={purchaseDate}
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              max={new Date().toISOString().split('T')[0]}
+            />
           </div>
           <div className="flex gap-2">
             <button
