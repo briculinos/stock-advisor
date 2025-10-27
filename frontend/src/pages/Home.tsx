@@ -49,12 +49,12 @@ function Home() {
     navigate('/insights', { state: { symbol, companyName, autoGenerate: true } });
   };
 
-  const handleDeleteOwnedStock = (index: number) => {
-    setOwnedStocks(prev => prev.filter((_, i) => i !== index));
+  const handleDeleteOwnedStock = (symbol: string) => {
+    setOwnedStocks(prev => prev.filter(stock => stock.symbol !== symbol));
   };
 
-  const handleDeleteFollowedStock = (index: number) => {
-    setFollowedStocks(prev => prev.filter((_, i) => i !== index));
+  const handleDeleteFollowedStock = (symbol: string) => {
+    setFollowedStocks(prev => prev.filter(stock => stock.symbol !== symbol));
   };
 
   const handleRefreshStocks = async () => {
@@ -378,9 +378,9 @@ function Home() {
               );
             })()}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ownedStocks.map((stock, index) => (
+              {ownedStocks.map((stock) => (
                 <OwnedStockCard
-                  key={index}
+                  key={stock.symbol}
                   symbol={stock.symbol}
                   companyName={stock.companyName}
                   currentPrice={stock.currentPrice}
@@ -389,12 +389,12 @@ function Home() {
                   initialPurchases={stock.purchases}
                   isEditing={stock.isEditing}
                   onSave={(purchases) => {
-                    setOwnedStocks(prev => prev.map((s, i) =>
-                      i === index ? { ...s, purchases, isEditing: false } : s
+                    setOwnedStocks(prev => prev.map((s) =>
+                      s.symbol === stock.symbol ? { ...s, purchases, isEditing: false } : s
                     ));
                   }}
                   onClick={() => handleStockClick(stock.symbol, stock.companyName)}
-                  onDelete={() => handleDeleteOwnedStock(index)}
+                  onDelete={() => handleDeleteOwnedStock(stock.symbol)}
                 />
               ))}
             </div>
@@ -406,15 +406,15 @@ function Home() {
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Followed Stocks</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {followedStocks.map((stock, index) => (
+              {followedStocks.map((stock) => (
                 <FollowedStockCard
-                  key={index}
+                  key={stock.symbol}
                   symbol={stock.symbol}
                   companyName={stock.companyName}
                   currentPrice={stock.currentPrice}
                   currency={stock.currency}
                   onClick={() => handleStockClick(stock.symbol, stock.companyName)}
-                  onDelete={() => handleDeleteFollowedStock(index)}
+                  onDelete={() => handleDeleteFollowedStock(stock.symbol)}
                 />
               ))}
             </div>
