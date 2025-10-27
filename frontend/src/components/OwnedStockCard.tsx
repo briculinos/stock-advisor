@@ -434,8 +434,11 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
             </div>
 
             <button
-              onClick={() => setEditMode(true)}
-              className="w-full text-sm text-blue-600 hover:text-blue-800 py-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditMode(true);
+              }}
+              className="w-full text-sm text-blue-600 hover:text-blue-800 py-2 font-semibold"
             >
               Edit
             </button>
