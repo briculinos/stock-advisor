@@ -43,6 +43,7 @@ function Home() {
   const [showFollowedStocks, setShowFollowedStocks] = useState(true);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
   const [isUpdatingNames, setIsUpdatingNames] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleStockClick = (symbol: string, companyName: string) => {
     navigate('/insights', { state: { symbol, companyName, autoGenerate: true } });
@@ -54,6 +55,45 @@ function Home() {
 
   const handleDeleteFollowedStock = (index: number) => {
     setFollowedStocks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRefreshStocks = async () => {
+    setIsRefreshing(true);
+    try {
+      // Refresh owned stocks
+      const updatedOwnedStocks = await Promise.all(
+        ownedStocks.map(async (stock) => {
+          try {
+            const { price } = await getQuickPrice(stock.symbol);
+            return { ...stock, currentPrice: price };
+          } catch (error) {
+            console.error(`Error refreshing ${stock.symbol}:`, error);
+            return stock; // Keep old data if refresh fails
+          }
+        })
+      );
+
+      // Refresh followed stocks
+      const updatedFollowedStocks = await Promise.all(
+        followedStocks.map(async (stock) => {
+          try {
+            const { price } = await getQuickPrice(stock.symbol);
+            return { ...stock, currentPrice: price };
+          } catch (error) {
+            console.error(`Error refreshing ${stock.symbol}:`, error);
+            return stock; // Keep old data if refresh fails
+          }
+        })
+      );
+
+      setOwnedStocks(updatedOwnedStocks);
+      setFollowedStocks(updatedFollowedStocks);
+    } catch (error) {
+      console.error('Error refreshing stocks:', error);
+      alert('Failed to refresh stock prices');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Save owned stocks to localStorage whenever they change
@@ -264,12 +304,30 @@ function Home() {
                 </button>
               )}
             </div>
-            <button
-              onClick={() => setShowAddStockModal(true)}
-              className="bg-blue-600 text-white px-4 md:px-6 py-3 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors font-semibold text-sm md:text-base flex items-center justify-center gap-2"
-            >
-              <span className="text-lg md:text-xl">+</span> Add Stock
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleRefreshStocks}
+                disabled={isRefreshing}
+                className="bg-blue-600 text-white px-4 md:px-6 py-3 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors font-semibold text-sm md:text-base flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isRefreshing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <span className="text-lg md:text-xl">↻</span> Refresh
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setShowAddStockModal(true)}
+                className="bg-blue-600 text-white px-4 md:px-6 py-3 rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors font-semibold text-sm md:text-base flex items-center justify-center gap-2"
+              >
+                <span className="text-lg md:text-xl">+</span> Add Stock
+              </button>
+            </div>
           </div>
         )}
 
