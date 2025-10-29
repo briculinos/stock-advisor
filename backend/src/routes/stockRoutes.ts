@@ -408,7 +408,7 @@ router.post('/cached-insights', authenticateToken, async (req: Request, res: Res
 router.post('/sync-portfolio', authenticateToken, async (req: Request, res: Response) => {
   try {
     const { followedStocks, ownedStocks } = req.body;
-    const userId = (req as any).user.userId; // From auth middleware
+    const userId = (req as any).user.id; // From auth middleware
 
     if (!Array.isArray(followedStocks) && !Array.isArray(ownedStocks)) {
       return res.status(400).json({ error: 'At least one of followedStocks or ownedStocks must be provided' });
@@ -434,7 +434,7 @@ router.post('/sync-portfolio', authenticateToken, async (req: Request, res: Resp
 // Get user portfolio (requires authentication)
 router.get('/user-portfolio', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId; // From auth middleware
+    const userId = (req as any).user.id; // From auth middleware
     const { portfolioService } = getServices();
     const portfolio = portfolioService.getUserPortfolio(userId);
 
