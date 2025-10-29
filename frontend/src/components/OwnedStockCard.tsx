@@ -53,10 +53,10 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
   const getCardColor = () => {
     if (!recommendation) return 'bg-white';
     switch (recommendation) {
-      case 'BUY': return 'bg-gradient-to-br from-green-50/30 to-green-50/50 border border-green-200/40';
-      case 'SELL': return 'bg-gradient-to-br from-red-50/30 to-red-50/50 border border-red-200/40';
-      case 'HOLD': return 'bg-gradient-to-br from-yellow-50/30 to-yellow-50/50 border border-yellow-200/40';
-      case 'AVOID': return 'bg-gradient-to-br from-gray-50/30 to-gray-50/50 border border-gray-200/40';
+      case 'BUY': return 'bg-gradient-to-br from-green-50/50 to-green-50/75 border border-green-200/60';
+      case 'SELL': return 'bg-gradient-to-br from-red-50/50 to-red-50/75 border border-red-200/60';
+      case 'HOLD': return 'bg-gradient-to-br from-yellow-50/50 to-yellow-50/75 border border-yellow-200/60';
+      case 'AVOID': return 'bg-gradient-to-br from-gray-50/50 to-gray-50/75 border border-gray-200/60';
       default: return 'bg-white';
     }
   };
