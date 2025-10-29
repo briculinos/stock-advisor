@@ -23,6 +23,7 @@ interface OwnedStockCardProps {
   onSave: (purchases: Purchase[]) => void;
   onClick?: () => void;
   onDelete?: () => void;
+  recommendation?: 'BUY' | 'HOLD' | 'SELL' | 'AVOID';
 }
 
 const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
@@ -35,7 +36,8 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
   isEditing = true,
   onSave,
   onClick,
-  onDelete
+  onDelete,
+  recommendation
 }) => {
   const [purchases, setPurchases] = useState<Purchase[]>(initialPurchases);
   const [editMode, setEditMode] = useState(isEditing);
@@ -45,13 +47,26 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
   const [purchasePrice, setPurchasePrice] = useState<number | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<'1d' | '1wk' | '1mo' | '1y'>('1mo');
 
-  // Fetch chart data when in view mode
+  // Get card background color based on recommendation
+  const getCardColor = () => {
+    if (!recommendation) return 'bg-white';
+    switch (recommendation) {
+      case 'BUY': return 'bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300';
+      case 'SELL': return 'bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300';
+      case 'HOLD': return 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-300';
+      case 'AVOID': return 'bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-400';
+      default: return 'bg-white';
+    }
+  };
+
+  // Fetch chart data when in view mode or period changes
   useEffect(() => {
     if (!editMode) {
       const fetchChartData = async () => {
         try {
-          const response = await fetch(`/api/stock/history/${symbol}?period=1mo`);
+          const response = await fetch(`/api/stock/history/${symbol}?period=${selectedPeriod}`);
           const data = await response.json();
           setChartData(data);
         } catch (error) {
@@ -60,7 +75,7 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
       };
       fetchChartData();
     }
-  }, [editMode, symbol]);
+  }, [editMode, symbol, selectedPeriod]);
 
   const handleDateChange = async (date: string) => {
     setPurchaseDate(date);
@@ -115,6 +130,19 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
   const yAxisMin = minPrice - (priceRange * 0.1); // Add 10% padding
   const yAxisMax = maxPrice + (priceRange * 0.1);
 
+  // Calculate stock price trend percentage (from chart data)
+  const stockTrendPercent = chartData.length >= 2
+    ? ((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price) * 100
+    : 0;
+
+  // Period labels
+  const periodLabels = {
+    '1d': '1 Day',
+    '1wk': '1 Week',
+    '1mo': '1 Month',
+    '1y': '1 Year'
+  };
+
   const handleCardClick = (e: React.MouseEvent) => {
     // Only allow click when not in edit mode
     if (!editMode && onClick) {
@@ -131,7 +159,7 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-md p-4 transition-shadow ${!editMode ? 'hover:shadow-xl cursor-pointer' : ''}`}
+      className={`${getCardColor()} rounded-lg shadow-md p-4 transition-shadow ${!editMode ? 'hover:shadow-xl cursor-pointer' : ''}`}
       onClick={handleCardClick}
     >
       <div className="flex items-center justify-between mb-4">
@@ -329,10 +357,29 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
                 <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-purple-500/10"></div>
                 <div className="relative">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="text-xs font-medium text-gray-300">30 Day Trend</div>
-                    <div className={`text-xs font-bold ${profitLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {profitLoss >= 0 ? '↗' : '↘'} {profitLossPercent.toFixed(1)}%
+                    <div className="text-xs font-medium text-gray-300">{periodLabels[selectedPeriod]} Trend</div>
+                    <div className={`text-xs font-bold ${stockTrendPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {stockTrendPercent >= 0 ? '↗' : '↘'} {Math.abs(stockTrendPercent).toFixed(1)}%
                     </div>
+                  </div>
+                  {/* Period Selector */}
+                  <div className="flex gap-1 mb-3" onClick={(e) => e.stopPropagation()}>
+                    {(['1d', '1wk', '1mo', '1y'] as const).map((period) => (
+                      <button
+                        key={period}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedPeriod(period);
+                        }}
+                        className={`flex-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                          selectedPeriod === period
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        {period === '1d' ? '1D' : period === '1wk' ? '1W' : period === '1mo' ? '1M' : '1Y'}
+                      </button>
+                    ))}
                   </div>
                   <ResponsiveContainer width="100%" height={120}>
                     <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -340,12 +387,12 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
                         <linearGradient id={`gradient-${symbol}`} x1="0" y1="0" x2="0" y2="1">
                           <stop
                             offset="0%"
-                            stopColor={profitLoss >= 0 ? "#10b981" : "#ef4444"}
+                            stopColor={stockTrendPercent >= 0 ? "#10b981" : "#ef4444"}
                             stopOpacity={0.4}
                           />
                           <stop
                             offset="100%"
-                            stopColor={profitLoss >= 0 ? "#10b981" : "#ef4444"}
+                            stopColor={stockTrendPercent >= 0 ? "#10b981" : "#ef4444"}
                             stopOpacity={0}
                           />
                         </linearGradient>
@@ -378,18 +425,18 @@ const OwnedStockCard: React.FC<OwnedStockCardProps> = ({
                           fontSize: '12px'
                         }}
                         labelStyle={{ color: '#9ca3af' }}
-                        itemStyle={{ color: profitLoss >= 0 ? '#10b981' : '#ef4444' }}
+                        itemStyle={{ color: stockTrendPercent >= 0 ? '#10b981' : '#ef4444' }}
                         formatter={(value: number) => [`${value.toFixed(2)} ${currency}`, 'Price']}
                         labelFormatter={(label) => new Date(label).toLocaleDateString()}
                       />
                       <Line
                         type="monotone"
                         dataKey="price"
-                        stroke={profitLoss >= 0 ? "#10b981" : "#ef4444"}
+                        stroke={stockTrendPercent >= 0 ? "#10b981" : "#ef4444"}
                         strokeWidth={2.5}
                         dot={false}
                         fill={`url(#gradient-${symbol})`}
-                        activeDot={{ r: 4, strokeWidth: 2, fill: profitLoss >= 0 ? "#10b981" : "#ef4444" }}
+                        activeDot={{ r: 4, strokeWidth: 2, fill: stockTrendPercent >= 0 ? "#10b981" : "#ef4444" }}
                       />
                     </LineChart>
                   </ResponsiveContainer>

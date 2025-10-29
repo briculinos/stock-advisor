@@ -113,4 +113,14 @@ export const sendFeedback = async (interestedInPaying: boolean) => {
   return response.data;
 };
 
+export const getCachedInsights = async (symbols: string[]): Promise<Record<string, { recommendation: 'BUY' | 'HOLD' | 'SELL' | 'AVOID'; confidence: number; compositeScore: number; timestamp: number }>> => {
+  const response = await api.post('/api/stock/cached-insights', { symbols });
+  return response.data;
+};
+
+export const syncPortfolio = async (followedStocks: any[], ownedStocks: any[]) => {
+  const response = await api.post('/api/stock/sync-portfolio', { followedStocks, ownedStocks });
+  return response.data;
+};
+
 export { api };

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AddStockModal from '../components/AddStockModal';
 import OwnedStockCard from '../components/OwnedStockCard';
 import FollowedStockCard from '../components/FollowedStockCard';
-import { getQuickPrice, getExchangeRateToSEK, searchSymbol } from '../services/api';
+import { getQuickPrice, getExchangeRateToSEK, searchSymbol, getCachedInsights, syncPortfolio } from '../services/api';
 
 interface Purchase {
   shares: number;
@@ -44,6 +44,7 @@ function Home() {
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({});
   const [isUpdatingNames, setIsUpdatingNames] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [cachedInsights, setCachedInsights] = useState<Record<string, { recommendation: 'BUY' | 'HOLD' | 'SELL' | 'AVOID'; confidence: number; compositeScore: number; timestamp: number }>>({});
 
   const handleStockClick = (symbol: string, companyName: string) => {
     navigate('/insights', { state: { symbol, companyName, autoGenerate: true } });
@@ -203,6 +204,38 @@ function Home() {
       fetchExchangeRates();
     }
   }, [ownedStocks.map(s => s.currency).join(',')]);
+
+  // Fetch cached insights and sync portfolio to backend
+  useEffect(() => {
+    const fetchInsightsAndSync = async () => {
+      if (ownedStocks.length === 0 && followedStocks.length === 0) {
+        return;
+      }
+
+      try {
+        // Get all unique symbols
+        const allSymbols = [
+          ...ownedStocks.map(s => s.symbol),
+          ...followedStocks.map(s => s.symbol)
+        ];
+        const uniqueSymbols = Array.from(new Set(allSymbols));
+
+        // Fetch cached insights
+        const insights = await getCachedInsights(uniqueSymbols);
+        setCachedInsights(insights);
+
+        // Sync portfolio to backend
+        await syncPortfolio(
+          followedStocks.map(s => ({ symbol: s.symbol, companyName: s.companyName })),
+          ownedStocks.map(s => ({ symbol: s.symbol, companyName: s.companyName }))
+        );
+      } catch (error) {
+        console.error('Error fetching insights or syncing portfolio:', error);
+      }
+    };
+
+    fetchInsightsAndSync();
+  }, [ownedStocks.length, followedStocks.length]);
 
   const handleSearch = async (symbol: string, companyName: string = '', ownershipType: 'own' | 'follow' = 'follow') => {
     setLoading(true);
@@ -395,6 +428,7 @@ function Home() {
                   }}
                   onClick={() => handleStockClick(stock.symbol, stock.companyName)}
                   onDelete={() => handleDeleteOwnedStock(stock.symbol)}
+                  recommendation={cachedInsights[stock.symbol]?.recommendation}
                 />
               ))}
             </div>
@@ -415,6 +449,7 @@ function Home() {
                   currency={stock.currency}
                   onClick={() => handleStockClick(stock.symbol, stock.companyName)}
                   onDelete={() => handleDeleteFollowedStock(stock.symbol)}
+                  recommendation={cachedInsights[stock.symbol]?.recommendation}
                 />
               ))}
             </div>

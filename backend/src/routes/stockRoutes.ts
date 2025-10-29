@@ -7,6 +7,8 @@ import { ElliottWaveService } from '../services/elliottWaveService.js';
 import { EnhancedInsightsService } from '../services/enhancedInsightsService.js';
 import { SymbolLookupService } from '../services/symbolLookupService.js';
 import { MoonshotAnalysisService } from '../services/moonshotAnalysisService.js';
+import { InsightsCacheService } from '../services/insightsCacheService.js';
+import { UserPortfolioService } from '../services/userPortfolioService.js';
 import { PortfolioItem } from '../types/index.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import { rateLimitMiddleware } from '../middleware/rateLimitMiddleware.js';
@@ -21,6 +23,8 @@ let elliottWaveService: ElliottWaveService | null = null;
 let enhancedInsightsService: EnhancedInsightsService | null = null;
 let symbolLookupService: SymbolLookupService | null = null;
 let moonshotService: MoonshotAnalysisService | null = null;
+let cacheService: InsightsCacheService | null = null;
+let portfolioService: UserPortfolioService | null = null;
 
 function getServices() {
   if (!researchService) {
@@ -44,7 +48,13 @@ function getServices() {
   if (!moonshotService) {
     moonshotService = new MoonshotAnalysisService();
   }
-  return { researchService, aiService, exchangeService, elliottWaveService, enhancedInsightsService, symbolLookupService, moonshotService };
+  if (!cacheService) {
+    cacheService = new InsightsCacheService();
+  }
+  if (!portfolioService) {
+    portfolioService = new UserPortfolioService();
+  }
+  return { researchService, aiService, exchangeService, elliottWaveService, enhancedInsightsService, symbolLookupService, moonshotService, cacheService, portfolioService };
 }
 
 // In-memory portfolio storage (in production, use a database)
@@ -360,6 +370,78 @@ router.get('/moonshots', authenticateToken, rateLimitMiddleware('moonshots'), as
   } catch (error) {
     console.error('Error finding moonshots:', error);
     res.status(500).json({ error: 'Failed to find moonshot candidates' });
+  }
+});
+
+// Get cached insights for multiple symbols (requires authentication)
+router.post('/cached-insights', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { symbols } = req.body;
+
+    if (!Array.isArray(symbols)) {
+      return res.status(400).json({ error: 'Symbols must be an array' });
+    }
+
+    const { cacheService } = getServices();
+    const cachedInsights: Record<string, any> = {};
+
+    symbols.forEach((symbol: string) => {
+      const cached = cacheService.getCachedInsight(symbol);
+      if (cached) {
+        cachedInsights[symbol] = {
+          recommendation: cached.recommendation,
+          confidence: cached.confidence,
+          compositeScore: cached.compositeScore,
+          timestamp: cached.timestamp
+        };
+      }
+    });
+
+    res.json(cachedInsights);
+  } catch (error) {
+    console.error('Error fetching cached insights:', error);
+    res.status(500).json({ error: 'Failed to fetch cached insights' });
+  }
+});
+
+// Sync user portfolio (requires authentication)
+router.post('/sync-portfolio', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { followedStocks, ownedStocks } = req.body;
+    const userId = (req as any).user.userId; // From auth middleware
+
+    if (!Array.isArray(followedStocks) && !Array.isArray(ownedStocks)) {
+      return res.status(400).json({ error: 'At least one of followedStocks or ownedStocks must be provided' });
+    }
+
+    const { portfolioService } = getServices();
+
+    if (Array.isArray(followedStocks)) {
+      portfolioService.updateFollowedStocks(userId, followedStocks);
+    }
+
+    if (Array.isArray(ownedStocks)) {
+      portfolioService.updateOwnedStocks(userId, ownedStocks);
+    }
+
+    res.json({ success: true, message: 'Portfolio synced successfully' });
+  } catch (error) {
+    console.error('Error syncing portfolio:', error);
+    res.status(500).json({ error: 'Failed to sync portfolio' });
+  }
+});
+
+// Get user portfolio (requires authentication)
+router.get('/user-portfolio', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId; // From auth middleware
+    const { portfolioService } = getServices();
+    const portfolio = portfolioService.getUserPortfolio(userId);
+
+    res.json(portfolio);
+  } catch (error) {
+    console.error('Error fetching user portfolio:', error);
+    res.status(500).json({ error: 'Failed to fetch user portfolio' });
   }
 });
 

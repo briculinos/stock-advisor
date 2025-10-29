@@ -13,6 +13,7 @@ interface FollowedStockCardProps {
   currency: string;
   onClick?: () => void;
   onDelete?: () => void;
+  recommendation?: 'BUY' | 'HOLD' | 'SELL' | 'AVOID';
 }
 
 const FollowedStockCard: React.FC<FollowedStockCardProps> = ({
@@ -21,14 +22,28 @@ const FollowedStockCard: React.FC<FollowedStockCardProps> = ({
   currentPrice,
   currency,
   onClick,
-  onDelete
+  onDelete,
+  recommendation
 }) => {
   const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<'1d' | '1wk' | '1mo' | '1y'>('1mo');
+
+  // Get card background color based on recommendation
+  const getCardColor = () => {
+    if (!recommendation) return 'bg-white';
+    switch (recommendation) {
+      case 'BUY': return 'bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300';
+      case 'SELL': return 'bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300';
+      case 'HOLD': return 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-300';
+      case 'AVOID': return 'bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-400';
+      default: return 'bg-white';
+    }
+  };
 
   useEffect(() => {
     const fetchChartData = async () => {
       try {
-        const response = await fetch(`/api/stock/history/${symbol}?period=1mo`);
+        const response = await fetch(`/api/stock/history/${symbol}?period=${selectedPeriod}`);
         const data = await response.json();
         setChartData(data);
       } catch (error) {
@@ -36,7 +51,7 @@ const FollowedStockCard: React.FC<FollowedStockCardProps> = ({
       }
     };
     fetchChartData();
-  }, [symbol]);
+  }, [symbol, selectedPeriod]);
 
   // Calculate price range for Y-axis
   const prices = chartData.map(d => d.price);
@@ -46,6 +61,19 @@ const FollowedStockCard: React.FC<FollowedStockCardProps> = ({
   const yAxisMin = minPrice - (priceRange * 0.1);
   const yAxisMax = maxPrice + (priceRange * 0.1);
 
+  // Calculate stock price trend percentage (from chart data)
+  const stockTrendPercent = chartData.length >= 2
+    ? ((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price) * 100
+    : 0;
+
+  // Period labels
+  const periodLabels = {
+    '1d': '1 Day',
+    '1wk': '1 Week',
+    '1mo': '1 Month',
+    '1y': '1 Year'
+  };
+
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDelete && window.confirm(`Remove ${symbol} from followed stocks?`)) {
@@ -54,7 +82,7 @@ const FollowedStockCard: React.FC<FollowedStockCardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-xl transition-shadow cursor-pointer" onClick={onClick}>
+    <div className={`${getCardColor()} rounded-lg shadow-md p-4 hover:shadow-xl transition-shadow cursor-pointer`} onClick={onClick}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex-1">
           <h3 className="text-xl font-bold text-gray-900">{symbol}</h3>
@@ -85,13 +113,45 @@ const FollowedStockCard: React.FC<FollowedStockCardProps> = ({
         <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 p-4 rounded-lg overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-purple-500/10"></div>
           <div className="relative">
-            <div className="text-xs font-medium text-gray-300 mb-3">30 Day Trend</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs font-medium text-gray-300">{periodLabels[selectedPeriod]} Trend</div>
+              <div className={`text-xs font-bold ${stockTrendPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {stockTrendPercent >= 0 ? '↗' : '↘'} {Math.abs(stockTrendPercent).toFixed(1)}%
+              </div>
+            </div>
+            {/* Period Selector */}
+            <div className="flex gap-1 mb-3" onClick={(e) => e.stopPropagation()}>
+              {(['1d', '1wk', '1mo', '1y'] as const).map((period) => (
+                <button
+                  key={period}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPeriod(period);
+                  }}
+                  className={`flex-1 px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    selectedPeriod === period
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {period === '1d' ? '1D' : period === '1wk' ? '1W' : period === '1mo' ? '1M' : '1Y'}
+                </button>
+              ))}
+            </div>
             <ResponsiveContainer width="100%" height={120}>
               <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <defs>
                   <linearGradient id={`gradient-followed-${symbol}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop
+                      offset="0%"
+                      stopColor={stockTrendPercent >= 0 ? "#10b981" : "#ef4444"}
+                      stopOpacity={0.4}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor={stockTrendPercent >= 0 ? "#10b981" : "#ef4444"}
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -122,18 +182,18 @@ const FollowedStockCard: React.FC<FollowedStockCardProps> = ({
                     fontSize: '12px'
                   }}
                   labelStyle={{ color: '#9ca3af' }}
-                  itemStyle={{ color: '#3b82f6' }}
+                  itemStyle={{ color: stockTrendPercent >= 0 ? '#10b981' : '#ef4444' }}
                   formatter={(value: number) => [`${value.toFixed(2)} ${currency}`, 'Price']}
                   labelFormatter={(label) => new Date(label).toLocaleDateString()}
                 />
                 <Line
                   type="monotone"
                   dataKey="price"
-                  stroke="#3b82f6"
+                  stroke={stockTrendPercent >= 0 ? "#10b981" : "#ef4444"}
                   strokeWidth={2.5}
                   dot={false}
                   fill={`url(#gradient-followed-${symbol})`}
-                  activeDot={{ r: 4, strokeWidth: 2, fill: '#3b82f6' }}
+                  activeDot={{ r: 4, strokeWidth: 2, fill: stockTrendPercent >= 0 ? "#10b981" : "#ef4444" }}
                 />
               </LineChart>
             </ResponsiveContainer>

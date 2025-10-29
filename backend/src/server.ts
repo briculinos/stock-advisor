@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 import stockRoutes from './routes/stockRoutes';
 import authRoutes from './routes/authRoutes';
+import { InsightsCronService } from './services/insightsCronService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -41,4 +42,8 @@ app.listen(PORT, () => {
   console.log(`🚀 Stock Advisor backend running on http://localhost:${PORT}`);
   console.log(`📊 API endpoint: http://localhost:${PORT}/api/stock`);
   console.log(`🔐 Auth endpoint: http://localhost:${PORT}/api/auth`);
+
+  // Start insights cron service
+  const cronService = new InsightsCronService();
+  cronService.start();
 });
