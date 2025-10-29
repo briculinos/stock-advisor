@@ -51,6 +51,9 @@ export class InsightsCacheService {
   }
 
   public getCachedInsight(symbol: string): CachedInsight | null {
+    // Reload cache from file to get latest data
+    this.cache = this.loadCache();
+
     const cached = this.cache[symbol.toUpperCase()];
     if (!cached) {
       return null;
