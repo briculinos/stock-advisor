@@ -239,7 +239,10 @@ function Home() {
 
     fetchInsightsAndSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownedStocks.length, followedStocks.length, ownedStocks, followedStocks]);
+  }, [
+    ownedStocks.map(s => s.symbol).sort().join(','),
+    followedStocks.map(s => s.symbol).sort().join(',')
+  ]);
 
   const handleSearch = async (symbol: string, companyName: string = '', ownershipType: 'own' | 'follow' = 'follow') => {
     setLoading(true);
