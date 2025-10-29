@@ -220,8 +220,11 @@ function Home() {
         ];
         const uniqueSymbols = Array.from(new Set(allSymbols));
 
+        console.log('Fetching cached insights for:', uniqueSymbols);
+
         // Fetch cached insights
         const insights = await getCachedInsights(uniqueSymbols);
+        console.log('Received cached insights:', insights);
         setCachedInsights(insights);
 
         // Sync portfolio to backend
@@ -235,7 +238,8 @@ function Home() {
     };
 
     fetchInsightsAndSync();
-  }, [ownedStocks.length, followedStocks.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownedStocks.length, followedStocks.length, ownedStocks, followedStocks]);
 
   const handleSearch = async (symbol: string, companyName: string = '', ownershipType: 'own' | 'follow' = 'follow') => {
     setLoading(true);
