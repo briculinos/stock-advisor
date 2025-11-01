@@ -74,56 +74,75 @@ export class FinnhubService {
     };
 
     try {
-      // Fetch news sentiment, social sentiment, and company news in parallel
-      const [newsSentiment, socialSentiment, companyNews] = await Promise.allSettled([
-        this.getNewsSentiment(symbol),
-        this.getSocialSentiment(symbol),
-        this.getCompanyNews(symbol)
-      ]);
+      // FREE TIER: Only fetch company news (basic endpoint)
+      // Premium endpoints (news-sentiment, social-sentiment) return 403 on free tier
+      const companyNews = await this.getCompanyNews(symbol);
 
-      // Process news sentiment
-      if (newsSentiment.status === 'fulfilled' && newsSentiment.value) {
-        data.newsSentiment = newsSentiment.value;
-        data.sentimentScore = newsSentiment.value.companyNewsScore;
-        data.articleCount = newsSentiment.value.buzz.articlesInLastWeek;
+      if (companyNews && companyNews.length > 0) {
+        data.companyNews = companyNews;
+        data.articleCount = companyNews.length;
+
+        // Do our own sentiment analysis on headlines and summaries
+        const sentiment = this.analyzeSentiment(companyNews);
+        data.sentimentScore = sentiment.score;
+
+        console.log(`Finnhub data for ${symbol}:`, {
+          sentimentScore: data.sentimentScore.toFixed(2),
+          articles: data.articleCount,
+          sentiment: sentiment.score > 0.05 ? 'Bullish' : sentiment.score < -0.05 ? 'Bearish' : 'Neutral'
+        });
+      } else {
+        console.log(`Finnhub: No news articles found for ${symbol}`);
       }
-
-      // Process social sentiment (Reddit data)
-      if (socialSentiment.status === 'fulfilled' && socialSentiment.value) {
-        data.socialSentiment = socialSentiment.value;
-
-        // Calculate Reddit mentions and sentiment from last 7 days
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-        const recentData = socialSentiment.value.data.filter(d =>
-          new Date(d.atTime) >= sevenDaysAgo
-        );
-
-        data.redditMentions = recentData.reduce((sum, d) => sum + d.mention, 0);
-
-        if (recentData.length > 0) {
-          data.redditSentiment = recentData.reduce((sum, d) => sum + d.score, 0) / recentData.length;
-        }
-      }
-
-      // Process company news
-      if (companyNews.status === 'fulfilled' && companyNews.value) {
-        data.companyNews = companyNews.value;
-      }
-
-      console.log(`Finnhub data for ${symbol}:`, {
-        sentimentScore: data.sentimentScore.toFixed(2),
-        articles: data.articleCount,
-        redditMentions: data.redditMentions,
-        redditSentiment: data.redditSentiment.toFixed(2)
-      });
 
       return data;
     } catch (error: any) {
       console.error('Error fetching Finnhub data:', error.message);
       return this.getEmptyData();
     }
+  }
+
+  private analyzeSentiment(articles: FinnhubNewsArticle[]): { score: number; bullish: number; bearish: number } {
+    const bullishKeywords = [
+      'surge', 'rally', 'soar', 'jump', 'gain', 'rise', 'upgrade', 'beat', 'approval',
+      'breakthrough', 'success', 'growth', 'positive', 'strong', 'record', 'wins',
+      'bullish', 'momentum', 'outperform', 'buy', 'profit', 'boost'
+    ];
+
+    const bearishKeywords = [
+      'plunge', 'crash', 'fall', 'drop', 'decline', 'downgrade', 'miss', 'loss',
+      'cut', 'lawsuit', 'investigation', 'concern', 'warning', 'negative', 'weak',
+      'bearish', 'sell', 'risk', 'threat', 'trouble', 'slump', 'fails'
+    ];
+
+    let bullishCount = 0;
+    let bearishCount = 0;
+
+    articles.forEach(article => {
+      const text = `${article.headline} ${article.summary}`.toLowerCase();
+
+      bullishKeywords.forEach(keyword => {
+        if (text.includes(keyword)) bullishCount++;
+      });
+
+      bearishKeywords.forEach(keyword => {
+        if (text.includes(keyword)) bearishCount++;
+      });
+    });
+
+    const totalKeywords = bullishCount + bearishCount;
+    if (totalKeywords === 0) {
+      return { score: 0, bullish: 0, bearish: 0 };
+    }
+
+    // Score from -1 to 1
+    const score = (bullishCount - bearishCount) / Math.max(totalKeywords, 10);
+
+    return {
+      score: Math.max(-1, Math.min(1, score)),
+      bullish: bullishCount,
+      bearish: bearishCount
+    };
   }
 
   private async getNewsSentiment(symbol: string): Promise<FinnhubNewsSentiment | null> {
