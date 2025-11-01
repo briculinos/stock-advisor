@@ -4,6 +4,7 @@ import { TechnicalAnalysisService } from './technicalAnalysisService.js';
 import { SentimentAnalysisService } from './sentimentAnalysisService.js';
 import { StockResearchService } from './stockResearchService.js';
 import { FusionEngine } from './fusionEngine.js';
+import { MoonshotScoringService } from './moonshotScoringService.js';
 
 interface EnhancedInsight {
   symbol: string;
@@ -57,6 +58,11 @@ interface EnhancedInsight {
   waves: any[];
   fibonacciLevels: any[];
   news: any[];
+
+  // Moonshot context
+  moonshotWarning?: string;
+  moonshotScore?: number;
+  moonshotGrade?: string;
 }
 
 export class EnhancedInsightsService {
@@ -66,6 +72,7 @@ export class EnhancedInsightsService {
   private sentimentService: SentimentAnalysisService;
   private researchService: StockResearchService;
   private fusionEngine: FusionEngine;
+  private moonshotScoringService: MoonshotScoringService;
 
   constructor() {
     this.elliottWaveService = new ElliottWaveService();
@@ -74,6 +81,7 @@ export class EnhancedInsightsService {
     this.sentimentService = new SentimentAnalysisService();
     this.researchService = new StockResearchService();
     this.fusionEngine = new FusionEngine();
+    this.moonshotScoringService = new MoonshotScoringService();
   }
 
   /**
@@ -141,7 +149,30 @@ export class EnhancedInsightsService {
       macroConfidence: macroIndicators.confidence || 75
     });
 
-    // 9. Build comprehensive insight
+    // 9. Calculate moonshot score to detect high-risk speculative plays
+    const moonshotBreakdown = this.moonshotScoringService.calculateMoonshotScore(researchData);
+    let moonshotWarning: string | undefined;
+
+    // If moonshot score >= 20 but recommendation is not BUY, add warning
+    if (moonshotBreakdown.totalScore >= 20 && fusionResult.recommendation !== 'BUY') {
+      const reasons: string[] = [];
+
+      if (moonshotBreakdown.components.rumorsAndPolitics.score >= 10) {
+        reasons.push('political catalysts');
+      }
+      if (moonshotBreakdown.components.newsImpact.score >= 8) {
+        reasons.push('strong news momentum');
+      }
+      if (moonshotBreakdown.components.socialSentiment.score >= 5) {
+        reasons.push('social media buzz');
+      }
+
+      moonshotWarning = `🎯 MOONSHOT ALERT (Grade ${moonshotBreakdown.grade}): This stock shows strong speculative momentum from ${reasons.join(', ')} despite weak fundamentals. Moonshot investing is HIGH RISK - suitable only for speculative plays with strict risk management.`;
+
+      console.log(`Moonshot warning for ${symbol}: ${moonshotBreakdown.totalScore} points (${moonshotBreakdown.grade})`);
+    }
+
+    // 10. Build comprehensive insight
     const enhancedInsight: EnhancedInsight = {
       symbol,
       currentPrice: researchData.currentPrice,
@@ -192,7 +223,12 @@ export class EnhancedInsightsService {
       priceData: elliottAnalysis.priceData,
       waves: elliottAnalysis.waves,
       fibonacciLevels: elliottAnalysis.fibonacciLevels,
-      news: researchData.news
+      news: researchData.news,
+
+      // Moonshot context
+      moonshotWarning,
+      moonshotScore: moonshotBreakdown.totalScore,
+      moonshotGrade: moonshotBreakdown.grade
     };
 
     console.log(`Enhanced insights generated: ${fusionResult.recommendation} with ${fusionResult.confidence}% confidence`);

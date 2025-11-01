@@ -134,6 +134,32 @@ function Insights() {
               <EnhancedInsightsDisplay data={insights} />
             )}
 
+            {/* Moonshot Warning - Show if stock has moonshot potential despite weak fundamentals */}
+            {!loading && insights && insights.moonshotWarning && (
+              <div className="mt-4 md:mt-6 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 rounded-lg shadow-md p-4 md:p-6">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h3 className="text-lg font-bold text-amber-900 mb-2">Speculative Moonshot Opportunity</h3>
+                    <p className="text-sm md:text-base text-amber-800 whitespace-pre-line">
+                      {insights.moonshotWarning}
+                    </p>
+                    {insights.moonshotScore !== undefined && (
+                      <div className="mt-3 flex items-center text-xs md:text-sm text-amber-700">
+                        <span className="font-semibold">Moonshot Score: {insights.moonshotScore}/100</span>
+                        <span className="mx-2">•</span>
+                        <span className="font-semibold">Grade: {insights.moonshotGrade}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Analysis Boxes - Show after recommendation on all screens < 1920px (including iPads), hide on 3XL */}
             <div className="3xl:hidden mt-4 md:mt-6">
               {!loading && insights && (
