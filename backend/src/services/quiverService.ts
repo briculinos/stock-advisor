@@ -58,10 +58,9 @@ export class QuiverService {
   }
 
   private getAuthHeaders() {
-    // Quiver uses Basic Auth with username and token
-    const credentials = Buffer.from(`${this.username}:${this.token}`).toString('base64');
+    // Quiver uses Token authentication
     return {
-      'Authorization': `Basic ${credentials}`,
+      'Authorization': `Token ${this.token}`,
       'Accept': 'application/json'
     };
   }
@@ -130,38 +129,46 @@ export class QuiverService {
 
   private async getCongressionalTrades(symbol: string): Promise<CongressionalTrade[]> {
     try {
-      // Try with token as query parameter
-      const response = await axios.get(`${this.baseUrl}/historical/congresstrading/${symbol}`, {
-        params: {
-          token: this.token
-        },
-        timeout: 8000
+      // Use bulk endpoint and filter for symbol - increase timeout for large dataset
+      const response = await axios.get(`${this.baseUrl}/bulk/congresstrading`, {
+        headers: this.getAuthHeaders(),
+        timeout: 30000 // Increase timeout for bulk endpoint
       });
 
-      const trades = response.data || [];
-      console.log(`Quiver: Found ${trades.length} congressional trades for ${symbol}`);
+      const allTrades = response.data || [];
+      // Filter for this symbol and get last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      return trades.slice(0, 20).map((trade: any) => ({
-        representative: trade.Representative || trade.representative || 'Unknown',
-        transaction: trade.Transaction || trade.transaction || 'Unknown',
-        amount: trade.Amount || trade.amount || 'Unknown',
-        date: trade.TransactionDate || trade.transaction_date || trade.date || new Date().toISOString(),
-        party: trade.Party || trade.party
+      const trades = allTrades
+        .filter((t: any) => {
+          if (t.Ticker !== symbol) return false;
+          const tradeDate = new Date(t.Traded);
+          return tradeDate >= thirtyDaysAgo;
+        })
+        .slice(0, 20);
+
+      console.log(`Quiver: Found ${trades.length} congressional trades for ${symbol} in last 30 days`);
+
+      return trades.map((trade: any) => ({
+        representative: trade.Name || 'Unknown',
+        transaction: trade.Transaction || 'Unknown',
+        amount: trade.Trade_Size_USD || 'Unknown',
+        date: trade.Traded || new Date().toISOString(),
+        party: trade.Party || undefined
       }));
     } catch (error: any) {
-      console.error('Error fetching congressional trades:', error.message);
+      console.error('Error fetching congressional trades:', error.response?.status || error.message);
       return [];
     }
   }
 
   private async getInsiderTrades(symbol: string): Promise<InsiderTrade[]> {
     try {
-      // Try the insidertrading endpoint with token as query param
+      // Use the historical endpoint with auth headers
       const response = await axios.get(`${this.baseUrl}/historical/insidertrading/${symbol}`, {
-        params: {
-          token: this.token
-        },
-        timeout: 8000
+        headers: this.getAuthHeaders(),
+        timeout: 10000
       });
 
       const trades = response.data || [];
@@ -184,12 +191,10 @@ export class QuiverService {
 
   private async getRedditMentions(symbol: string): Promise<RedditMention[]> {
     try {
-      // Try with token as query parameter
+      // Use the historical endpoint with auth headers
       const response = await axios.get(`${this.baseUrl}/historical/wallstreetbets/${symbol}`, {
-        params: {
-          token: this.token
-        },
-        timeout: 8000
+        headers: this.getAuthHeaders(),
+        timeout: 10000
       });
 
       const mentions = response.data || [];
