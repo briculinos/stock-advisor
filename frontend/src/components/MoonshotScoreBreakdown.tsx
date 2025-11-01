@@ -71,16 +71,12 @@ const MoonshotScoreBreakdown: React.FC<MoonshotScoreBreakdownProps> = ({ moonsho
     maxScore: number;
     weight: number;
     details: string[];
-    icon: string;
-  }> = ({ title, score, maxScore, weight, details, icon }) => (
+  }> = ({ title, score, maxScore, weight, details }) => (
     <div className="mb-4 p-4 bg-gray-50 rounded-lg">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{icon}</span>
-          <div>
-            <h4 className="font-semibold text-gray-900">{title}</h4>
-            <p className="text-xs text-gray-500">{(weight * 100).toFixed(0)}% weight</p>
-          </div>
+        <div>
+          <h4 className="font-semibold text-gray-900">{title}</h4>
+          <p className="text-xs text-gray-500">{(weight * 100).toFixed(0)}% weight</p>
         </div>
         <span className="text-lg font-bold text-gray-700">
           {score}/{maxScore}
@@ -155,7 +151,6 @@ const MoonshotScoreBreakdown: React.FC<MoonshotScoreBreakdownProps> = ({ moonsho
           maxScore={50}
           weight={moonshotScore.components.rumorsAndPolitics.weight}
           details={moonshotScore.components.rumorsAndPolitics.details}
-          icon="🏛️"
         />
 
         <ComponentBar
@@ -164,7 +159,6 @@ const MoonshotScoreBreakdown: React.FC<MoonshotScoreBreakdownProps> = ({ moonsho
           maxScore={25}
           weight={moonshotScore.components.newsImpact.weight}
           details={moonshotScore.components.newsImpact.details}
-          icon="📰"
         />
 
         <ComponentBar
@@ -173,7 +167,6 @@ const MoonshotScoreBreakdown: React.FC<MoonshotScoreBreakdownProps> = ({ moonsho
           maxScore={15}
           weight={moonshotScore.components.socialSentiment.weight}
           details={moonshotScore.components.socialSentiment.details}
-          icon="🚀"
         />
 
         <ComponentBar
@@ -182,15 +175,14 @@ const MoonshotScoreBreakdown: React.FC<MoonshotScoreBreakdownProps> = ({ moonsho
           maxScore={10}
           weight={moonshotScore.components.insiderActivity.weight}
           details={moonshotScore.components.insiderActivity.details}
-          icon="👔"
         />
       </div>
 
       {/* Strengths */}
       {moonshotScore.strengths.length > 0 && (
         <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
-          <h4 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
-            <span>✅</span> Strengths
+          <h4 className="font-semibold text-green-900 mb-2">
+            Strengths
           </h4>
           <ul className="space-y-1">
             {moonshotScore.strengths.map((strength, idx) => (
@@ -205,8 +197,8 @@ const MoonshotScoreBreakdown: React.FC<MoonshotScoreBreakdownProps> = ({ moonsho
       {/* Weaknesses */}
       {moonshotScore.weaknesses.length > 0 && (
         <div className="mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
-          <h4 className="font-semibold text-red-900 mb-2 flex items-center gap-2">
-            <span>⚠️</span> Weaknesses
+          <h4 className="font-semibold text-red-900 mb-2">
+            Weaknesses
           </h4>
           <ul className="space-y-1">
             {moonshotScore.weaknesses.map((weakness, idx) => (
@@ -220,8 +212,8 @@ const MoonshotScoreBreakdown: React.FC<MoonshotScoreBreakdownProps> = ({ moonsho
 
       {/* Recommendation */}
       <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <h4 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-          <span>💡</span> Recommendation
+        <h4 className="font-semibold text-blue-900 mb-2">
+          Recommendation
         </h4>
         <p className="text-sm text-blue-800">{moonshotScore.recommendation}</p>
       </div>
