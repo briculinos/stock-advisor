@@ -91,42 +91,42 @@ export class MoonshotAnalysisService {
    * Find top moonshot candidates - Revised Pipeline
    */
   async findMoonshotCandidates(limit: number = 10): Promise<MoonshotCandidate[]> {
-    console.log('🔍 MOONSHOT PIPELINE - Starting candidate search...');
+    console.log('MOONSHOT PIPELINE - Starting candidate search...');
 
     const candidates: MoonshotCandidate[] = [];
 
     // STEP 1: Build candidate list from 3 sources
-    console.log('\n📋 STEP 1: Building candidate list...');
+    console.log('\nSTEP 1: Building candidate list...');
     const candidateList = await this.buildCandidateList();
     console.log(`   Found ${candidateList.length} candidates to analyze:`, candidateList.slice(0, 15));
 
     // STEP 2-5: Analyze each stock (includes filters, scoring, gates, and tier classification)
     for (const stockSymbol of candidateList.slice(0, 8)) { // Analyze top 8 for faster results
       try {
-        console.log(`\n📊 Analyzing ${stockSymbol}...`);
+        console.log(`\nAnalyzing ${stockSymbol}...`);
         const candidate = await this.analyzeStockForMoonshot(stockSymbol);
         if (candidate) {
-          console.log(`   ✅ ${stockSymbol} qualified as Tier ${candidate.tier} with score ${candidate.moonshotScore.toFixed(1)}`);
+          console.log(`   ${stockSymbol} qualified as Tier ${candidate.tier} with score ${candidate.moonshotScore.toFixed(1)}`);
           candidates.push(candidate);
 
           // Stop if we have enough candidates (3 Tier A or 6 total for faster response)
           const tierA = candidates.filter(c => c.tier === 'A').length;
           if (tierA >= 3 || candidates.length >= 6) {
-            console.log(`   ⏩ Early stop: Found ${tierA} Tier A and ${candidates.length} total candidates`);
+            console.log(`   Early stop: Found ${tierA} Tier A and ${candidates.length} total candidates`);
             break;
           }
         } else {
-          console.log(`   ❌ ${stockSymbol} did not qualify`);
+          console.log(`   ${stockSymbol} did not qualify`);
         }
 
         // Reduced delay - we now have better rate limits with Finnhub
         await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
       } catch (error) {
-        console.error(`   ⚠️  Error analyzing ${stockSymbol}:`, error);
+        console.error(`   Error analyzing ${stockSymbol}:`, error);
       }
     }
 
-    console.log(`\n📈 Total candidates found: ${candidates.length}`);
+    console.log(`\nTotal candidates found: ${candidates.length}`);
 
     // STEP 6: Sort output - Tier A first, then Tier B
     candidates.sort((a, b) => {
@@ -138,7 +138,7 @@ export class MoonshotAnalysisService {
       return b.moonshotScore - a.moonshotScore;
     });
 
-    console.log(`\n🎯 Final results: ${candidates.filter(c => c.tier === 'A').length} Tier A, ${candidates.filter(c => c.tier === 'B').length} Tier B`);
+    console.log(`\nFinal results: ${candidates.filter(c => c.tier === 'A').length} Tier A, ${candidates.filter(c => c.tier === 'B').length} Tier B`);
 
     return candidates.slice(0, limit);
   }
@@ -397,11 +397,10 @@ export class MoonshotAnalysisService {
    - Social Sentiment: ${moonshotBreakdown.components.socialSentiment.score}/15
    - Insider Activity: ${moonshotBreakdown.components.insiderActivity.score}/10`);
 
-      // STEP 4: Only accept stocks with moonshot scores >= 20
-      // This filters out truly bad F grade stocks (0-24) while being realistic for Hobbyist plan
-      // With limited data sources (no Reddit/Insider on Hobbyist), 20 is a more achievable threshold
-      if (moonshotScore < 20) {
-        console.log(`   ${symbol} failed: Moonshot score ${moonshotScore} < 20 (Grade ${moonshotBreakdown.grade})`);
+      // STEP 4: Only accept stocks with moonshot scores >= 25 (Grade D or higher)
+      // This excludes Grade F stocks (0-24) which lack sufficient moonshot potential
+      if (moonshotScore < 25) {
+        console.log(`   ${symbol} failed: Moonshot score ${moonshotScore} < 25 (Grade ${moonshotBreakdown.grade})`);
         return null;
       }
 

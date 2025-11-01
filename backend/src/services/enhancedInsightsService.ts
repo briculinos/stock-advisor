@@ -153,8 +153,8 @@ export class EnhancedInsightsService {
     const moonshotBreakdown = this.moonshotScoringService.calculateMoonshotScore(researchData);
     let moonshotWarning: string | undefined;
 
-    // If moonshot score >= 20 but recommendation is not BUY, add warning
-    if (moonshotBreakdown.totalScore >= 20 && fusionResult.recommendation !== 'BUY') {
+    // If moonshot score >= 25 (Grade D or higher) but recommendation is not BUY, add warning
+    if (moonshotBreakdown.totalScore >= 25 && fusionResult.recommendation !== 'BUY') {
       const reasons: string[] = [];
 
       if (moonshotBreakdown.components.rumorsAndPolitics.score >= 10) {
@@ -167,7 +167,7 @@ export class EnhancedInsightsService {
         reasons.push('social media buzz');
       }
 
-      moonshotWarning = `🎯 MOONSHOT ALERT (Grade ${moonshotBreakdown.grade}): This stock shows strong speculative momentum from ${reasons.join(', ')} despite weak fundamentals. Moonshot investing is HIGH RISK - suitable only for speculative plays with strict risk management.`;
+      moonshotWarning = `MOONSHOT ALERT (Grade ${moonshotBreakdown.grade}): This stock shows strong speculative momentum from ${reasons.join(', ')} despite weak fundamentals. Moonshot investing is HIGH RISK - suitable only for speculative plays with strict risk management.`;
 
       console.log(`Moonshot warning for ${symbol}: ${moonshotBreakdown.totalScore} points (${moonshotBreakdown.grade})`);
     }
