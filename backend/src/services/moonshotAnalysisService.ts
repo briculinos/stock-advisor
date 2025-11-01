@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { TechnicalAnalysisService } from './technicalAnalysisService.js';
 import { StockResearchService } from './stockResearchService.js';
+import { MoonshotScoringService } from './moonshotScoringService.js';
 
 interface NewsSignal {
   title: string;
@@ -67,6 +68,7 @@ export class MoonshotAnalysisService {
   private serpApiKey: string;
   private technicalService: TechnicalAnalysisService;
   private researchService: StockResearchService;
+  private moonshotScoringService: MoonshotScoringService;
 
   // High-impact stock symbols to monitor (can be expanded)
   private readonly WATCHLIST = [
@@ -82,6 +84,7 @@ export class MoonshotAnalysisService {
     this.serpApiKey = process.env.SERPAPI_KEY || '';
     this.technicalService = new TechnicalAnalysisService();
     this.researchService = new StockResearchService();
+    this.moonshotScoringService = new MoonshotScoringService();
   }
 
   /**
@@ -344,11 +347,11 @@ export class MoonshotAnalysisService {
   }
 
   /**
-   * Analyze a stock for moonshot potential
+   * Analyze a stock for moonshot potential using professional APIs
    */
   private async analyzeStockForMoonshot(symbol: string): Promise<MoonshotCandidate | null> {
     try {
-      // Get research data
+      // Get research data (includes professional APIs: Quiver, Alpha Vantage, Marketaux)
       const researchData = await this.researchService.researchStock(symbol);
 
       if (!researchData.news || researchData.news.length === 0) {
@@ -376,90 +379,54 @@ export class MoonshotAnalysisService {
         return null;
       }
 
-      // STEP 3: Score each ticker
-      // Analyze news for rumors, politics, tariffs (last 72h)
-      const newsAnalysis = this.analyzeNewsContent(researchData.news);
+      // STEP 3: Calculate professional moonshot score using new scoring service
+      const moonshotBreakdown = this.moonshotScoringService.calculateMoonshotScore(researchData);
 
-      // Get technical analysis
+      // Extract scores from professional analysis
+      const moonshotScore = moonshotBreakdown.totalScore;
+      const rumorsPoliticsTariffsScore = moonshotBreakdown.components.rumorsAndPolitics.score;
+      const newsScore = moonshotBreakdown.components.newsImpact.score;
+
+      console.log(`   Professional Moonshot Score for ${symbol}:
+   - Total: ${moonshotScore} (Grade: ${moonshotBreakdown.grade})
+   - Rumors/Politics/Tariffs: ${rumorsPoliticsTariffsScore}/50
+   - News Impact: ${newsScore}/25
+   - Social Sentiment: ${moonshotBreakdown.components.socialSentiment.score}/15
+   - Insider Activity: ${moonshotBreakdown.components.insiderActivity.score}/10`);
+
+      // STEP 4: Only accept stocks with moonshot scores >= 30 (Grade D or higher)
+      // This ensures we don't show AVOID/F grade stocks as moonshot candidates
+      if (moonshotScore < 30) {
+        console.log(`   ${symbol} failed: Moonshot score ${moonshotScore} < 30 (Grade ${moonshotBreakdown.grade})`);
+        return null;
+      }
+
+      // Get technical analysis for additional signals
       const technicalIndicators = this.technicalService.analyzeTechnical(priceData);
       const technicalScore = this.technicalService.calculateTechnicalScore(technicalIndicators, researchData.currentPrice);
 
-      // STEP 4: Catalyst OR Rumor Gate
-      // Skip gate if using minimal news (Brave Search rate limited)
-      const usingMinimalNews = researchData.news.length <= 2 &&
-        researchData.news.every(n => n.url.includes('finance.yahoo.com'));
-
-      if (!usingMinimalNews) {
-        const catalyst = this.detectCatalyst(researchData.news);
-        const hasHotRumor = newsAnalysis.rumorsPoliticsTariffsScore >= 40;
-
-        if (!catalyst.hasCatalyst && !hasHotRumor) {
-          console.log(`   ${symbol} failed gate: No catalyst <30 days AND rumor score ${newsAnalysis.rumorsPoliticsTariffsScore.toFixed(1)} < 40`);
-          return null;
-        }
-        console.log(`   ${symbol} passed gate: ${catalyst.hasCatalyst ? 'Has catalyst' : `Rumor score ${newsAnalysis.rumorsPoliticsTariffsScore.toFixed(1)} ≥ 40`}`);
-      } else {
-        console.log(`   ${symbol} bypassing gate (using minimal news due to rate limit)`);
-      }
-
+      // Analyze news content for display purposes
+      const newsAnalysis = this.analyzeNewsContent(researchData.news);
       const catalyst = this.detectCatalyst(researchData.news);
-
-      // Calculate event sentiment
       const eventSentiment = this.calculateEventSentiment(researchData.news);
-
-      // Calculate short squeeze potential
-      const shortSqueezePotential = this.calculateShortSqueezePotential(
-        fundamentalData.shortInterest || 0,
-        newsAnalysis.newsScore
-      );
-
-      // Calculate weighted moonshot score with dynamic rebalancing
-      const rumorsPoliticsTariffsScore = newsAnalysis.rumorsPoliticsTariffsScore;
-      const newsScore = newsAnalysis.newsScore;
-
-      // Dynamic rebalancing: if rumors/politics/tariffs are weak, rely more on technical + news
-      let rumorWeight: number;
-      let technicalWeight: number;
-      let newsWeight: number;
-
-      if (rumorsPoliticsTariffsScore < 20) {
-        // Weak rumors → rebalance to Technical 45%, News 35%, Rumors 20%
-        rumorWeight = 0.20;
-        technicalWeight = 0.45;
-        newsWeight = 0.35;
-      } else {
-        // Strong rumors → standard weighting
-        rumorWeight = 0.50;
-        technicalWeight = 0.25;
-        newsWeight = 0.25;
-      }
-
-      const moonshotScore = (
-        rumorsPoliticsTariffsScore * rumorWeight +
-        technicalScore * technicalWeight +
-        newsScore * newsWeight
-      );
 
       // Calculate volume and momentum indicators
       const volumeRatio = fundamentalData.currentVolume && fundamentalData.avgVolume
         ? fundamentalData.currentVolume / fundamentalData.avgVolume
         : undefined;
-      const unusualVolume = volumeRatio ? volumeRatio > 2.0 : false; // STEP 5: vol > 2x avg
+      const unusualVolume = volumeRatio ? volumeRatio > 2.0 : false;
       const dayOverDayChange = this.calculateDayOverDayChange(priceData);
 
-      console.log(`   Scores for ${symbol}:
-   - Rumors/Politics/Tariffs: ${rumorsPoliticsTariffsScore.toFixed(1)} (${(rumorWeight * 100).toFixed(0)}% weight)
-   - Technical: ${technicalScore.toFixed(1)} (${(technicalWeight * 100).toFixed(0)}% weight)
-   - News: ${newsScore.toFixed(1)} (${(newsWeight * 100).toFixed(0)}% weight)
-   - TOTAL: ${moonshotScore.toFixed(1)}
-   - Day/Day Change: ${dayOverDayChange ? dayOverDayChange.toFixed(1) : 'N/A'}%
-   - Volume Ratio: ${volumeRatio ? volumeRatio.toFixed(1) : 'N/A'}x`);
+      // Calculate short squeeze potential
+      const shortSqueezePotential = this.calculateShortSqueezePotential(
+        fundamentalData.shortInterest || 0,
+        newsScore
+      );
 
-      // Classify into tiers
-      const tier = this.classifyTier(
+      // Classify into tiers based on professional score
+      const tier = this.classifyTierByProfessionalScore(
         moonshotScore,
-        catalyst,
-        newsAnalysis,
+        moonshotBreakdown.grade,
         unusualVolume,
         dayOverDayChange
       );
@@ -469,20 +436,19 @@ export class MoonshotAnalysisService {
         return null;
       }
 
-      console.log(`   Qualified as Tier ${tier}`);
+      console.log(`   Qualified as Tier ${tier} with Grade ${moonshotBreakdown.grade}`);
 
       // Calculate volatility
       const volatility = this.calculateVolatility(priceData);
 
-      // Generate key reason
-      const keyReason = this.generateKeyReason(newsAnalysis, technicalIndicators, moonshotScore);
+      // Generate key reason from professional analysis
+      const keyReason = this.generateKeyReasonFromProfessionalScore(moonshotBreakdown);
 
-      // Determine recommendation
-      const recommendation = this.determineRecommendation(
+      // Determine recommendation based on grade
+      const recommendation = this.determineRecommendationFromGrade(
+        moonshotBreakdown.grade,
         moonshotScore,
-        shortSqueezePotential,
-        eventSentiment,
-        catalyst.hasCatalyst
+        eventSentiment
       );
 
       return {
@@ -509,7 +475,8 @@ export class MoonshotAnalysisService {
         tariffImpacts: newsAnalysis.tariffs,
         technicalSignals: this.extractTechnicalSignals(technicalIndicators),
         newsHighlights: newsAnalysis.highlights,
-        riskLevel: volatility > 50 ? 'very-high' : volatility > 30 ? 'high' : 'medium',
+        riskLevel: moonshotBreakdown.riskLevel === 'Very High' ? 'very-high' :
+                   moonshotBreakdown.riskLevel === 'High' ? 'high' : 'medium',
         volatility,
         marketCap: fundamentalData.marketCap,
         avgVolume: fundamentalData.avgVolume,
@@ -977,32 +944,76 @@ export class MoonshotAnalysisService {
   }
 
   /**
-   * STEP 5: Classify stock into Tier A or Tier B
+   * STEP 5: Classify stock into Tier A or Tier B based on professional moonshot score
    */
-  private classifyTier(
+  private classifyTierByProfessionalScore(
     moonshotScore: number,
-    catalyst: { hasCatalyst: boolean; date?: string; type?: string },
-    newsAnalysis: { rumors: any[]; rumorsPoliticsTariffsScore: number },
+    grade: 'S' | 'A' | 'B' | 'C' | 'D' | 'F',
     unusualVolume: boolean,
     dayOverDayChange?: number
   ): 'A' | 'B' | null {
-    // Tier A: Score ≥ 40 (lowered from 50 to account for minimal news scenarios)
-    if (moonshotScore >= 40) {
+    // Tier A: Grade A or S (score >= 70)
+    // These are strong moonshot candidates with high confidence
+    if (grade === 'S' || grade === 'A') {
       return 'A';
     }
 
-    // Tier B: Score ≥ 25 AND (%move > 5% OR vol > 2x avg)
-    // Relaxed thresholds when volume data unavailable
-    if (moonshotScore >= 25) {
+    // Tier A: Grade B (score 55-69) with strong momentum
+    if (grade === 'B') {
       const hasBigMove = dayOverDayChange !== undefined && Math.abs(dayOverDayChange) > 5;
+      if (unusualVolume || hasBigMove) {
+        return 'A';
+      }
+      return 'B'; // Grade B without momentum goes to Tier B
+    }
 
+    // Tier B: Grade C or D (score 30-54) with strong momentum
+    if (grade === 'C' || grade === 'D') {
+      const hasBigMove = dayOverDayChange !== undefined && Math.abs(dayOverDayChange) > 5;
       if (unusualVolume || hasBigMove) {
         return 'B';
       }
     }
 
-    // Doesn't qualify for any tier
+    // Doesn't qualify for any tier (F grades are filtered out earlier)
     return null;
+  }
+
+  /**
+   * Generate key reason from professional moonshot analysis
+   */
+  private generateKeyReasonFromProfessionalScore(moonshotBreakdown: any): string {
+    const strengths = moonshotBreakdown.strengths;
+
+    if (strengths.length === 0) {
+      return 'High-risk speculative opportunity with mixed signals';
+    }
+
+    // Take top 2 strengths
+    const topReasons = strengths.slice(0, 2).join(' + ');
+    return `Moonshot potential: ${topReasons}`;
+  }
+
+  /**
+   * Determine recommendation based on professional grade
+   */
+  private determineRecommendationFromGrade(
+    grade: 'S' | 'A' | 'B' | 'C' | 'D' | 'F',
+    moonshotScore: number,
+    eventSentiment: 'positive' | 'negative' | 'neutral'
+  ): 'WATCHLIST' | 'BUY' {
+    // BUY for Grade S or A (score >= 70) with positive sentiment
+    if ((grade === 'S' || grade === 'A') && eventSentiment === 'positive') {
+      return 'BUY';
+    }
+
+    // BUY for exceptional scores (>= 80) even with neutral sentiment
+    if (moonshotScore >= 80) {
+      return 'BUY';
+    }
+
+    // Otherwise WATCHLIST (monitor the opportunity)
+    return 'WATCHLIST';
   }
 
   /**
