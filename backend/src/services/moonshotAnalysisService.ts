@@ -118,6 +118,9 @@ export class MoonshotAnalysisService {
         } else {
           console.log(`   ❌ ${stockSymbol} did not qualify`);
         }
+
+        // Add delay between stocks to avoid API rate limits (especially Alpha Vantage)
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
       } catch (error) {
         console.error(`   ⚠️  Error analyzing ${stockSymbol}:`, error);
       }
@@ -394,10 +397,11 @@ export class MoonshotAnalysisService {
    - Social Sentiment: ${moonshotBreakdown.components.socialSentiment.score}/15
    - Insider Activity: ${moonshotBreakdown.components.insiderActivity.score}/10`);
 
-      // STEP 4: Only accept stocks with moonshot scores >= 30 (Grade D or higher)
-      // This ensures we don't show AVOID/F grade stocks as moonshot candidates
-      if (moonshotScore < 30) {
-        console.log(`   ${symbol} failed: Moonshot score ${moonshotScore} < 30 (Grade ${moonshotBreakdown.grade})`);
+      // STEP 4: Only accept stocks with moonshot scores >= 20
+      // This filters out truly bad F grade stocks (0-24) while being realistic for Hobbyist plan
+      // With limited data sources (no Reddit/Insider on Hobbyist), 20 is a more achievable threshold
+      if (moonshotScore < 20) {
+        console.log(`   ${symbol} failed: Moonshot score ${moonshotScore} < 20 (Grade ${moonshotBreakdown.grade})`);
         return null;
       }
 
@@ -958,24 +962,22 @@ export class MoonshotAnalysisService {
       return 'A';
     }
 
-    // Tier A: Grade B (score 55-69) with strong momentum
-    if (grade === 'B') {
+    // Tier A: Grade B or C (score 40-69) with strong momentum
+    if (grade === 'B' || grade === 'C') {
       const hasBigMove = dayOverDayChange !== undefined && Math.abs(dayOverDayChange) > 5;
       if (unusualVolume || hasBigMove) {
         return 'A';
       }
-      return 'B'; // Grade B without momentum goes to Tier B
+      return 'B'; // Grade B/C without momentum goes to Tier B
     }
 
-    // Tier B: Grade C or D (score 30-54) with strong momentum
-    if (grade === 'C' || grade === 'D') {
-      const hasBigMove = dayOverDayChange !== undefined && Math.abs(dayOverDayChange) > 5;
-      if (unusualVolume || hasBigMove) {
-        return 'B';
-      }
+    // Tier B: Grade D (score 20-39) - acceptable for Hobbyist plan with limited data
+    // Also Grade B/C without momentum
+    if (grade === 'D' || moonshotScore >= 20) {
+      return 'B';
     }
 
-    // Doesn't qualify for any tier (F grades are filtered out earlier)
+    // Doesn't qualify for any tier (F grades filtered out earlier)
     return null;
   }
 
