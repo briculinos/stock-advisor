@@ -214,8 +214,22 @@ export class MoonshotScoringService {
       }
     }
 
-    // Alpha Vantage Sentiment (up to 10 points)
-    if (data.alphaVantageData && data.alphaVantageData.articleCount > 0) {
+    // Finnhub Sentiment (up to 10 points) - PRIORITY over Alpha Vantage (better rate limits)
+    if (data.finnhubData && data.finnhubData.articleCount > 0) {
+      const fhScore = data.finnhubData.sentimentScore;
+
+      if (fhScore > 0.05) {
+        const sentimentScore = Math.min(10, Math.round(fhScore * 30));
+        factors.alphaVantageSentiment = sentimentScore; // Reuse same factor name
+        score += sentimentScore;
+        details.push(`Bullish Finnhub sentiment: ${(fhScore * 100).toFixed(0)}% (+${sentimentScore} points)`);
+      } else if (fhScore < -0.05) {
+        details.push(`Bearish Finnhub sentiment: ${(fhScore * 100).toFixed(0)}% (0 points)`);
+      } else {
+        details.push(`Neutral Finnhub sentiment (0 points)`);
+      }
+    } else if (data.alphaVantageData && data.alphaVantageData.articleCount > 0) {
+      // Fallback to Alpha Vantage if Finnhub unavailable
       const avScore = data.alphaVantageData.sentimentScore;
 
       if (avScore > 0.05) {
@@ -244,9 +258,11 @@ export class MoonshotScoringService {
       details.push(`Low news volume: ${newsCount} articles (+1 point)`);
     }
 
-    // FALLBACK: If professional APIs failed (Alpha Vantage + Marketaux), use Yahoo Finance news analysis
+    // FALLBACK: If professional APIs failed (Finnhub + Alpha Vantage + Marketaux), use Yahoo Finance news analysis
     // This provides a baseline score for moonshot candidates when APIs are rate-limited
-    const hasProfessionalSentiment = marketauxNews.length > 0 || (data.alphaVantageData && data.alphaVantageData.articleCount > 0);
+    const hasProfessionalSentiment = marketauxNews.length > 0 ||
+                                     (data.alphaVantageData && data.alphaVantageData.articleCount > 0) ||
+                                     (data.finnhubData && data.finnhubData.articleCount > 0);
 
     if (!hasProfessionalSentiment && data.news.length > 0) {
       // Analyze Yahoo Finance news titles for sentiment keywords
@@ -300,32 +316,40 @@ export class MoonshotScoringService {
       socialMomentum: 0
     };
 
-    if (data.quiverData) {
-      const redditMentions = data.quiverData.redditMentions;
+    // Try Quiver first, then fallback to Finnhub Reddit data
+    let redditMentions = 0;
+    let dataSource = '';
 
-      // Reddit WSB mentions (up to 10 points)
+    if (data.quiverData && data.quiverData.redditMentions > 0) {
+      redditMentions = data.quiverData.redditMentions;
+      dataSource = 'Quiver WSB';
+    } else if (data.finnhubData && data.finnhubData.redditMentions > 0) {
+      redditMentions = data.finnhubData.redditMentions;
+      dataSource = 'Finnhub Reddit';
+    }
+
+    if (redditMentions > 0) {
+      // Reddit mentions scoring (up to 10 points)
       if (redditMentions > 100) {
         factors.redditBuzz = 10;
         score += 10;
-        details.push(`Very high Reddit buzz: ${redditMentions} WSB mentions (+10 points - MEME STOCK POTENTIAL)`);
+        details.push(`Very high Reddit buzz: ${redditMentions} mentions on ${dataSource} (+10 points - MEME STOCK POTENTIAL)`);
       } else if (redditMentions > 50) {
         factors.redditBuzz = 7;
         score += 7;
-        details.push(`High Reddit buzz: ${redditMentions} WSB mentions (+7 points)`);
+        details.push(`High Reddit buzz: ${redditMentions} mentions on ${dataSource} (+7 points)`);
       } else if (redditMentions > 20) {
         factors.redditBuzz = 5;
         score += 5;
-        details.push(`Moderate Reddit buzz: ${redditMentions} WSB mentions (+5 points)`);
+        details.push(`Moderate Reddit buzz: ${redditMentions} mentions on ${dataSource} (+5 points)`);
       } else if (redditMentions > 5) {
         factors.redditBuzz = 2;
         score += 2;
-        details.push(`Low Reddit buzz: ${redditMentions} WSB mentions (+2 points)`);
-      } else if (redditMentions > 0) {
+        details.push(`Low Reddit buzz: ${redditMentions} mentions on ${dataSource} (+2 points)`);
+      } else {
         factors.redditBuzz = 1;
         score += 1;
-        details.push(`Minimal Reddit mentions: ${redditMentions} (+1 point)`);
-      } else {
-        details.push('No Reddit WSB mentions detected');
+        details.push(`Minimal Reddit mentions: ${redditMentions} on ${dataSource} (+1 point)`);
       }
 
       // Social momentum bonus (up to 5 points)
@@ -334,8 +358,13 @@ export class MoonshotScoringService {
         score += 5;
         details.push('Retail momentum building (+5 points)');
       }
+
+      // Sentiment bonus from Finnhub (if available)
+      if (data.finnhubData && data.finnhubData.redditSentiment > 0.1) {
+        details.push(`Positive Reddit sentiment (+${(data.finnhubData.redditSentiment * 100).toFixed(0)}%)`);
+      }
     } else {
-      details.push('Social sentiment data unavailable');
+      details.push('No Reddit social sentiment data available');
     }
 
     return {

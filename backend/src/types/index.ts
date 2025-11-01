@@ -81,6 +81,13 @@ export interface StockResearchData {
       analystTarget: string;
     };
   };
+  finnhubData?: {
+    newsSentiment: 'Bullish' | 'Neutral' | 'Bearish';
+    sentimentScore: number; // -1 to 1 scale
+    articleCount: number;
+    redditMentions: number;
+    redditSentiment: number; // -1 to 1 scale
+  };
 }
 
 export interface PortfolioItem {

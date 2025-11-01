@@ -2,6 +2,7 @@ import axios from 'axios';
 import { StockResearchData, NewsItem } from '../types/index.js';
 import { QuiverService } from './quiverService.js';
 import { AlphaVantageService } from './alphaVantageService.js';
+import { FinnhubService } from './finnhubService.js';
 
 interface CachedPriceData {
   price: number;
@@ -15,6 +16,7 @@ export class StockResearchService {
   private marketauxApiKey: string;
   private quiverService: QuiverService;
   private alphaVantageService: AlphaVantageService;
+  private finnhubService: FinnhubService;
   private priceCache: Map<string, CachedPriceData> = new Map();
   private readonly CACHE_DURATION = 15 * 60 * 1000; // 15 minutes cache to avoid rate limiting
   private static rateLimited: boolean = false;
@@ -26,6 +28,7 @@ export class StockResearchService {
     this.marketauxApiKey = marketauxApiKey || process.env.MARKETAUX_API_KEY || '';
     this.quiverService = new QuiverService();
     this.alphaVantageService = new AlphaVantageService();
+    this.finnhubService = new FinnhubService();
   }
 
   private delay(ms: number): Promise<void> {
@@ -176,6 +179,28 @@ export class StockResearchService {
         console.error('Error fetching Alpha Vantage data:', error);
       }
 
+      // Fetch Finnhub data (replaces Alpha Vantage with better rate limits)
+      let finnhubData;
+      try {
+        console.log(`Fetching Finnhub data for ${symbol}...`);
+        const fhResponse = await this.finnhubService.getFinnhubData(symbol);
+        if (fhResponse.articleCount > 0 || fhResponse.redditMentions > 0) {
+          finnhubData = {
+            newsSentiment: fhResponse.sentimentScore > 0.15 ? 'Bullish' as const :
+                          fhResponse.sentimentScore < -0.15 ? 'Bearish' as const : 'Neutral' as const,
+            sentimentScore: fhResponse.sentimentScore,
+            articleCount: fhResponse.articleCount,
+            redditMentions: fhResponse.redditMentions,
+            redditSentiment: fhResponse.redditSentiment
+          };
+          console.log(`Finnhub: ${finnhubData.newsSentiment} sentiment (${finnhubData.sentimentScore.toFixed(2)}), ${finnhubData.articleCount} articles, ${finnhubData.redditMentions} Reddit mentions`);
+        } else {
+          console.log('Finnhub: No data available');
+        }
+      } catch (error) {
+        console.error('Error fetching Finnhub data:', error);
+      }
+
       // Check if we got any news
       if (news.length === 0) {
         console.log('No news found from any API, using minimal news data');
@@ -188,7 +213,8 @@ export class StockResearchService {
           news: this.generateMinimalNews(symbol, companyName),
           lastUpdated,
           quiverData,
-          alphaVantageData
+          alphaVantageData,
+          finnhubData
         };
       }
 
@@ -203,7 +229,8 @@ export class StockResearchService {
         forecast,
         lastUpdated,
         quiverData,
-        alphaVantageData
+        alphaVantageData,
+        finnhubData
       };
     } catch (error) {
       console.error('Error researching stock:', error);
