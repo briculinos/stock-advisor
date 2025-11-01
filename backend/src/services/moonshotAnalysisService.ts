@@ -101,7 +101,7 @@ export class MoonshotAnalysisService {
     console.log(`   Found ${candidateList.length} candidates to analyze:`, candidateList.slice(0, 15));
 
     // STEP 2-5: Analyze each stock (includes filters, scoring, gates, and tier classification)
-    for (const stockSymbol of candidateList.slice(0, 12)) { // Analyze top 12 to reduce timeout risk
+    for (const stockSymbol of candidateList.slice(0, 8)) { // Analyze top 8 for faster results
       try {
         console.log(`\n📊 Analyzing ${stockSymbol}...`);
         const candidate = await this.analyzeStockForMoonshot(stockSymbol);
@@ -109,9 +109,9 @@ export class MoonshotAnalysisService {
           console.log(`   ✅ ${stockSymbol} qualified as Tier ${candidate.tier} with score ${candidate.moonshotScore.toFixed(1)}`);
           candidates.push(candidate);
 
-          // Stop if we have enough candidates (5 Tier A or 10 total)
+          // Stop if we have enough candidates (3 Tier A or 6 total for faster response)
           const tierA = candidates.filter(c => c.tier === 'A').length;
-          if (tierA >= 5 || candidates.length >= 10) {
+          if (tierA >= 3 || candidates.length >= 6) {
             console.log(`   ⏩ Early stop: Found ${tierA} Tier A and ${candidates.length} total candidates`);
             break;
           }
@@ -119,8 +119,8 @@ export class MoonshotAnalysisService {
           console.log(`   ❌ ${stockSymbol} did not qualify`);
         }
 
-        // Add delay between stocks to avoid API rate limits (especially Alpha Vantage)
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+        // Reduced delay - we now have better rate limits with Finnhub
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
       } catch (error) {
         console.error(`   ⚠️  Error analyzing ${stockSymbol}:`, error);
       }
