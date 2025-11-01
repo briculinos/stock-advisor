@@ -145,26 +145,37 @@ export class MoonshotScoringService {
     }
 
     // Political News Sentiment (up to 25 points)
-    const politicalKeywords = ['tariff', 'regulation', 'policy', 'government', 'congress', 'senate', 'tax', 'subsidy'];
+    const politicalKeywords = ['tariff', 'regulation', 'policy', 'government', 'congress', 'senate', 'tax', 'subsidy', 'fda', 'approval', 'regulatory'];
     const politicalNews = data.news.filter(n =>
       politicalKeywords.some(kw => n.title.toLowerCase().includes(kw) || n.snippet.toLowerCase().includes(kw))
     );
 
     if (politicalNews.length > 0) {
-      const avgSentiment = politicalNews
-        .filter(n => n.sentimentScore !== undefined)
-        .reduce((sum, n) => sum + ((n.sentimentScore || 0.5) - 0.5) * 2, 0) / Math.max(1, politicalNews.length);
+      const politicalNewsWithSentiment = politicalNews.filter(n => n.sentimentScore !== undefined);
 
-      if (avgSentiment > 0.1) {
-        const politicalScore = Math.min(15, Math.round(avgSentiment * 50));
-        factors.politicalNewsPositive = politicalScore;
-        score += politicalScore;
-        details.push(`Positive political news sentiment (+${politicalScore} points)`);
-      } else if (avgSentiment < -0.1) {
-        const politicalPenalty = Math.min(15, Math.round(Math.abs(avgSentiment) * 50));
-        factors.politicalNewsNegative = -politicalPenalty;
-        score -= politicalPenalty;
-        details.push(`Negative political news sentiment (-${politicalPenalty} points)`);
+      if (politicalNewsWithSentiment.length > 0) {
+        // Use Marketaux sentiment scores when available
+        const avgSentiment = politicalNewsWithSentiment
+          .reduce((sum, n) => sum + ((n.sentimentScore || 0.5) - 0.5) * 2, 0) / politicalNewsWithSentiment.length;
+
+        if (avgSentiment > 0.1) {
+          const politicalScore = Math.min(15, Math.round(avgSentiment * 50));
+          factors.politicalNewsPositive = politicalScore;
+          score += politicalScore;
+          details.push(`Positive political news sentiment (+${politicalScore} points)`);
+        } else if (avgSentiment < -0.1) {
+          const politicalPenalty = Math.min(15, Math.round(Math.abs(avgSentiment) * 50));
+          factors.politicalNewsNegative = -politicalPenalty;
+          score -= politicalPenalty;
+          details.push(`Negative political news sentiment (-${politicalPenalty} points)`);
+        }
+      } else {
+        // FALLBACK: No Marketaux sentiment, but political keywords detected
+        // Give base points for being mentioned in political/regulatory context
+        const baseScore = Math.min(10, politicalNews.length * 3);
+        factors.politicalNewsPositive = baseScore;
+        score += baseScore;
+        details.push(`Political/regulatory news coverage detected: ${politicalNews.length} article${politicalNews.length > 1 ? 's' : ''} (+${baseScore} points)`);
       }
     }
 
@@ -231,6 +242,45 @@ export class MoonshotScoringService {
       factors.newsVolume = 1;
       score += 1;
       details.push(`Low news volume: ${newsCount} articles (+1 point)`);
+    }
+
+    // FALLBACK: If professional APIs failed (Alpha Vantage + Marketaux), use Yahoo Finance news analysis
+    // This provides a baseline score for moonshot candidates when APIs are rate-limited
+    const hasProfessionalSentiment = marketauxNews.length > 0 || (data.alphaVantageData && data.alphaVantageData.articleCount > 0);
+
+    if (!hasProfessionalSentiment && data.news.length > 0) {
+      // Analyze Yahoo Finance news titles for sentiment keywords
+      const positiveKeywords = ['surge', 'rally', 'breakthrough', 'gain', 'soar', 'jump', 'rise', 'upgrade', 'beat', 'approval', 'deal', 'partnership', 'growth', 'positive', 'bullish'];
+      const negativeKeywords = ['plunge', 'crash', 'fall', 'drop', 'decline', 'downgrade', 'miss', 'loss', 'cut', 'lawsuit', 'investigation', 'bearish', 'weak'];
+
+      let positiveCount = 0;
+      let negativeCount = 0;
+
+      data.news.forEach(n => {
+        const text = `${n.title} ${n.snippet}`.toLowerCase();
+        positiveKeywords.forEach(kw => {
+          if (text.includes(kw)) positiveCount++;
+        });
+        negativeKeywords.forEach(kw => {
+          if (text.includes(kw)) negativeCount++;
+        });
+      });
+
+      const netSentiment = positiveCount - negativeCount;
+
+      if (netSentiment > 2) {
+        const fallbackScore = Math.min(8, Math.floor(netSentiment / 2) * 2); // Up to 8 points
+        score += fallbackScore;
+        details.push(`Fallback sentiment analysis (Yahoo Finance): +${fallbackScore} points from ${positiveCount} positive vs ${negativeCount} negative signals`);
+      } else if (netSentiment < -2) {
+        details.push(`Fallback sentiment analysis: Bearish (${negativeCount} negative signals)`);
+      } else {
+        // Even with neutral sentiment, give some base points for having recent news
+        if (newsCount >= 3) {
+          score += 3;
+          details.push(`Fallback: Active news coverage detected (+3 points base score)`);
+        }
+      }
     }
 
     return {
