@@ -7,6 +7,7 @@ import { ElliottWaveService } from '../services/elliottWaveService.js';
 import { EnhancedInsightsService } from '../services/enhancedInsightsService.js';
 import { SymbolLookupService } from '../services/symbolLookupService.js';
 import { MoonshotAnalysisService } from '../services/moonshotAnalysisService.js';
+import { MoonshotScoringService } from '../services/moonshotScoringService.js';
 import { InsightsCacheService } from '../services/insightsCacheService.js';
 import { UserPortfolioService } from '../services/userPortfolioService.js';
 import { PortfolioItem } from '../types/index.js';
@@ -23,6 +24,7 @@ let elliottWaveService: ElliottWaveService | null = null;
 let enhancedInsightsService: EnhancedInsightsService | null = null;
 let symbolLookupService: SymbolLookupService | null = null;
 let moonshotService: MoonshotAnalysisService | null = null;
+let moonshotScoringService: MoonshotScoringService | null = null;
 let cacheService: InsightsCacheService | null = null;
 let portfolioService: UserPortfolioService | null = null;
 
@@ -48,13 +50,16 @@ function getServices() {
   if (!moonshotService) {
     moonshotService = new MoonshotAnalysisService();
   }
+  if (!moonshotScoringService) {
+    moonshotScoringService = new MoonshotScoringService();
+  }
   if (!cacheService) {
     cacheService = new InsightsCacheService();
   }
   if (!portfolioService) {
     portfolioService = new UserPortfolioService();
   }
-  return { researchService, aiService, exchangeService, elliottWaveService, enhancedInsightsService, symbolLookupService, moonshotService, cacheService, portfolioService };
+  return { researchService, aiService, exchangeService, elliottWaveService, enhancedInsightsService, symbolLookupService, moonshotService, moonshotScoringService, cacheService, portfolioService };
 }
 
 // In-memory portfolio storage (in production, use a database)
@@ -110,6 +115,39 @@ router.post('/analyze', authenticateToken, rateLimitMiddleware('stock_analyze'),
   } catch (error) {
     console.error('Error analyzing stock:', error);
     res.status(500).json({ error: 'Failed to analyze stock' });
+  }
+});
+
+// Get moonshot score for a stock (requires authentication + rate limiting)
+router.post('/moonshot-score', authenticateToken, rateLimitMiddleware('moonshot_score'), async (req: Request, res: Response) => {
+  try {
+    const { symbol, companyName } = req.body;
+
+    if (!symbol) {
+      return res.status(400).json({ error: 'Symbol is required' });
+    }
+
+    console.log(`Calculating moonshot score for: ${symbol}`);
+
+    const { researchService, moonshotScoringService } = getServices();
+
+    // Research the stock
+    const researchData = await researchService.researchStock(symbol.toUpperCase());
+
+    // Calculate moonshot score
+    const moonshotScore = moonshotScoringService.calculateMoonshotScore(researchData);
+
+    res.json({
+      symbol: symbol.toUpperCase(),
+      companyName: researchData.companyName || companyName || symbol,
+      currentPrice: researchData.currentPrice,
+      currency: researchData.currency,
+      moonshotScore,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error calculating moonshot score:', error);
+    res.status(500).json({ error: 'Failed to calculate moonshot score' });
   }
 });
 

@@ -3,7 +3,8 @@ import { useLocation } from 'react-router-dom';
 import InsightsSearch from '../components/InsightsSearch';
 import AnalysisBoxes from '../components/AnalysisBoxes';
 import EnhancedInsightsDisplay from '../components/EnhancedInsightsDisplay';
-import { getEnhancedInsights } from '../services/api';
+import MoonshotScoreBreakdown from '../components/MoonshotScoreBreakdown';
+import { getEnhancedInsights, getMoonshotScore } from '../services/api';
 
 function Insights() {
   const location = useLocation();
@@ -12,21 +13,29 @@ function Insights() {
 
   const [loading, setLoading] = useState(false);
   const [insights, setInsights] = useState<any>(null);
+  const [moonshotScore, setMoonshotScore] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [disableAutocomplete, setDisableAutocomplete] = useState(false);
 
   const handleSearch = async (symbol: string, companyName: string = '') => {
     setLoading(true);
     setInsights(null);
+    setMoonshotScore(null);
     setError(null);
 
     try {
-      const enhancedData = await getEnhancedInsights(symbol, companyName);
+      // Fetch both enhanced insights and moonshot score in parallel
+      const [enhancedData, moonshotData] = await Promise.all([
+        getEnhancedInsights(symbol, companyName),
+        getMoonshotScore(symbol, companyName)
+      ]);
+
       setInsights(enhancedData);
+      setMoonshotScore(moonshotData.moonshotScore);
       // Re-enable autocomplete after insights are generated
       setDisableAutocomplete(false);
     } catch (err) {
-      console.error('Error fetching enhanced insights:', err);
+      console.error('Error fetching insights:', err);
       setError('Failed to generate insights. Please try again.');
       // Re-enable autocomplete on error too
       setDisableAutocomplete(false);
@@ -131,6 +140,13 @@ function Insights() {
                 <AnalysisBoxes data={insights} />
               )}
             </div>
+
+            {/* Moonshot Score Breakdown */}
+            {!loading && moonshotScore && (
+              <div className="mt-4 md:mt-6">
+                <MoonshotScoreBreakdown moonshotScore={moonshotScore} />
+              </div>
+            )}
           </div>
         </div>
 

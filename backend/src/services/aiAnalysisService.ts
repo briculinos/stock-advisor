@@ -39,7 +39,25 @@ export class AIAnalysisService {
   }
 
   private buildAnalysisPrompt(data: StockResearchData, companyName: string): string {
-    const newsText = data.news.map(n => `- ${n.title}: ${n.snippet}`).join('\n');
+    // Build news text with sentiment if available
+    const newsText = data.news.map(n => {
+      const sentimentTag = n.sentiment ? ` [${n.sentiment.toUpperCase()}${n.sentimentScore ? ` ${(n.sentimentScore * 100).toFixed(0)}%` : ''}]` : '';
+      return `- ${n.title}${sentimentTag}: ${n.snippet}`;
+    }).join('\n');
+
+    // Calculate overall news sentiment
+    const newsWithSentiment = data.news.filter(n => n.sentimentScore !== undefined);
+    let overallSentiment = 'UNKNOWN';
+    if (newsWithSentiment.length > 0) {
+      const avgSentiment = newsWithSentiment.reduce((sum, n) => sum + (n.sentimentScore || 0), 0) / newsWithSentiment.length;
+      if (avgSentiment > 0.2) {
+        overallSentiment = `POSITIVE (${(avgSentiment * 100).toFixed(0)}%)`;
+      } else if (avgSentiment < -0.2) {
+        overallSentiment = `NEGATIVE (${(avgSentiment * 100).toFixed(0)}%)`;
+      } else {
+        overallSentiment = `NEUTRAL (${(avgSentiment * 100).toFixed(0)}%)`;
+      }
+    }
 
     // Additional metrics (mark as UNKNOWN if not available)
     const sectorPerformance = data.sectorPerformance || 'UNKNOWN';
@@ -48,17 +66,65 @@ export class AIAnalysisService {
     const debtMetrics = data.debtToEbitda || data.cashRunway || 'UNKNOWN';
     const macroRegimeScore = data.macroScore || 'UNKNOWN';
 
+    // Quiver data (political/insider/social signals)
+    let politicalInsiderSection = '';
+    if (data.quiverData) {
+      const q = data.quiverData;
+      politicalInsiderSection = `
+
+    🚨 POLITICAL & INSIDER SIGNALS (Critical for moonshots):
+    • Congressional Trading (30d): ${q.congressionalBuys} BUYS, ${q.congressionalSells} SELLS
+    • Insider Trading (30d): ${q.insiderBuys} BUYS, ${q.insiderSells} SELLS
+    • Reddit WSB Mentions (7d): ${q.redditMentions} mentions
+    • Activity Summary: ${q.activitySummary || 'No recent activity'}
+
+    ⚠️ INTERPRETATION:
+    - Congressional BUYS = Potential bullish political tailwinds or advance knowledge
+    - Congressional SELLS = Potential bearish regulations or insider concerns
+    - Insider BUYS = Strong confidence from company leadership
+    - Insider SELLS = Could be routine or lack of confidence
+    - High Reddit mentions = Retail momentum, meme stock potential (high volatility)`;
+    } else {
+      politicalInsiderSection = '\n    • Political/Insider/Social Data: UNKNOWN (Quiver API not configured)';
+    }
+
+    // Alpha Vantage data (professional sentiment & fundamentals)
+    let alphaVantageSection = '';
+    if (data.alphaVantageData) {
+      const av = data.alphaVantageData;
+      const sentimentEmoji = av.newsSentiment === 'Bullish' ? '🟢' : av.newsSentiment === 'Bearish' ? '🔴' : '🟡';
+      alphaVantageSection = `
+
+    📊 ALPHA VANTAGE PROFESSIONAL DATA:
+    • News Sentiment: ${sentimentEmoji} ${av.newsSentiment} (Score: ${(av.sentimentScore * 100).toFixed(0)}%)
+    • Articles Analyzed: ${av.articleCount}`;
+
+      if (av.fundamentals) {
+        const f = av.fundamentals;
+        alphaVantageSection += `
+    • Fundamentals:
+      - P/E Ratio: ${f.pe}
+      - EPS: ${f.eps}
+      - Profit Margin: ${f.profitMargin}
+      - Debt/Equity: ${f.debtToEquity}
+      - Analyst Target: ${f.analystTarget}`;
+      }
+    } else {
+      alphaVantageSection = '\n    • Alpha Vantage Data: UNKNOWN';
+    }
+
     return `Analyze ${companyName} (${data.symbol}) stock:
     • Current Price: $${data.currentPrice.toFixed(2)}
     • Relative Sector Performance (30d): ${sectorPerformance}
     • Short Interest: ${shortInterest}%
     • Insider Activity (30d): ${insiderActivity}
     • Debt/EBITDA or Cash Runway: ${debtMetrics}
-    • Recent News:
+    • Overall News Sentiment: ${overallSentiment}
+    • Recent News (with sentiment scores):
 ${newsText}
     • Earnings: ${data.earnings ? `${data.earnings.quarter} – EPS: $${data.earnings.eps}, Revenue: ${data.earnings.revenue}` : 'UNKNOWN'}
     • Forecast: ${data.forecast || 'UNKNOWN'}
-    • Macro Regime Score: ${macroRegimeScore}
+    • Macro Regime Score: ${macroRegimeScore}${politicalInsiderSection}${alphaVantageSection}
 
 Please provide:
     1. Overall recommendation (BUY, HOLD, SELL, or AVOID)

@@ -35,6 +35,8 @@ export interface NewsItem {
   source: string;
   publishedAt: string;
   snippet: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  sentimentScore?: number; // -1 to 1 scale
 }
 
 export interface StockResearchData {
@@ -58,6 +60,27 @@ export interface StockResearchData {
   debtToEbitda?: string;
   cashRunway?: string;
   macroScore?: string;
+  quiverData?: {
+    congressionalTrades: number;
+    congressionalBuys: number;
+    congressionalSells: number;
+    insiderBuys: number;
+    insiderSells: number;
+    redditMentions: number;
+    activitySummary?: string;
+  };
+  alphaVantageData?: {
+    newsSentiment: 'Bullish' | 'Neutral' | 'Bearish';
+    sentimentScore: number; // -1 to 1 scale
+    articleCount: number;
+    fundamentals?: {
+      pe: string;
+      eps: string;
+      profitMargin: string;
+      debtToEquity: string;
+      analystTarget: string;
+    };
+  };
 }
 
 export interface PortfolioItem {

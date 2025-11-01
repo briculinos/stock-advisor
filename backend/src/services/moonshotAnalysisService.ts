@@ -27,6 +27,12 @@ interface MoonshotCandidate {
   eventSentiment: 'positive' | 'negative' | 'neutral';
   catalystDate?: string; // ISO date of upcoming catalyst
   recommendation: 'WATCHLIST' | 'BUY';
+  tier: 'A' | 'B'; // A = Actionable, B = Watch
+
+  // Momentum indicators
+  unusualVolume: boolean;
+  volumeRatio?: number; // current volume / avg volume
+  dayOverDayChange?: number; // % price change from previous day
 
   // Argumentation
   keyReason: string;
@@ -58,6 +64,7 @@ interface NewsItem {
 
 export class MoonshotAnalysisService {
   private braveApiKey: string;
+  private serpApiKey: string;
   private technicalService: TechnicalAnalysisService;
   private researchService: StockResearchService;
 
@@ -72,44 +79,114 @@ export class MoonshotAnalysisService {
 
   constructor() {
     this.braveApiKey = process.env.BRAVE_API_KEY || '';
+    this.serpApiKey = process.env.SERPAPI_KEY || '';
     this.technicalService = new TechnicalAnalysisService();
     this.researchService = new StockResearchService();
   }
 
   /**
-   * Find top moonshot candidates
+   * Find top moonshot candidates - Revised Pipeline
    */
-  async findMoonshotCandidates(limit: number = 5): Promise<MoonshotCandidate[]> {
-    console.log('Searching for moonshot candidates...');
+  async findMoonshotCandidates(limit: number = 10): Promise<MoonshotCandidate[]> {
+    console.log('🔍 MOONSHOT PIPELINE - Starting candidate search...');
 
     const candidates: MoonshotCandidate[] = [];
 
-    // Search for stocks with high-impact news
-    const stocksWithNews = await this.searchHighImpactStocks();
-    console.log(`Found ${stocksWithNews.length} stocks to analyze:`, stocksWithNews);
+    // STEP 1: Build candidate list from 3 sources
+    console.log('\n📋 STEP 1: Building candidate list...');
+    const candidateList = await this.buildCandidateList();
+    console.log(`   Found ${candidateList.length} candidates to analyze:`, candidateList.slice(0, 15));
 
-    // Analyze each stock
-    for (const stockSymbol of stocksWithNews.slice(0, 10)) { // Analyze top 10, return top 5
+    // STEP 2-5: Analyze each stock (includes filters, scoring, gates, and tier classification)
+    for (const stockSymbol of candidateList.slice(0, 12)) { // Analyze top 12 to reduce timeout risk
       try {
-        console.log(`\nAnalyzing ${stockSymbol}...`);
+        console.log(`\n📊 Analyzing ${stockSymbol}...`);
         const candidate = await this.analyzeStockForMoonshot(stockSymbol);
         if (candidate) {
-          console.log(`${stockSymbol} qualified with score ${candidate.moonshotScore.toFixed(1)}`);
+          console.log(`   ✅ ${stockSymbol} qualified as Tier ${candidate.tier} with score ${candidate.moonshotScore.toFixed(1)}`);
           candidates.push(candidate);
+
+          // Stop if we have enough candidates (5 Tier A or 10 total)
+          const tierA = candidates.filter(c => c.tier === 'A').length;
+          if (tierA >= 5 || candidates.length >= 10) {
+            console.log(`   ⏩ Early stop: Found ${tierA} Tier A and ${candidates.length} total candidates`);
+            break;
+          }
         } else {
-          console.log(`${stockSymbol} did not qualify`);
+          console.log(`   ❌ ${stockSymbol} did not qualify`);
         }
       } catch (error) {
-        console.error(`Error analyzing ${stockSymbol}:`, error);
+        console.error(`   ⚠️  Error analyzing ${stockSymbol}:`, error);
       }
     }
 
-    console.log(`\nTotal candidates found: ${candidates.length}`);
+    console.log(`\n📈 Total candidates found: ${candidates.length}`);
 
-    // Sort by moonshot score and return top candidates
-    candidates.sort((a, b) => b.moonshotScore - a.moonshotScore);
+    // STEP 6: Sort output - Tier A first, then Tier B
+    candidates.sort((a, b) => {
+      // First sort by tier (A before B)
+      if (a.tier !== b.tier) {
+        return a.tier === 'A' ? -1 : 1;
+      }
+      // Within same tier, sort by score
+      return b.moonshotScore - a.moonshotScore;
+    });
+
+    console.log(`\n🎯 Final results: ${candidates.filter(c => c.tier === 'A').length} Tier A, ${candidates.filter(c => c.tier === 'B').length} Tier B`);
 
     return candidates.slice(0, limit);
+  }
+
+  /**
+   * STEP 1: Build candidate list from 3 sources
+   */
+  private async buildCandidateList(): Promise<string[]> {
+    const discoveredStocks = new Set<string>();
+
+    // Source 1: Brave news tickers
+    console.log('   Source 1: Brave news search...');
+    const newsStocks = await this.searchHighImpactStocks();
+    newsStocks.forEach(s => discoveredStocks.add(s));
+    console.log(`   - Found ${newsStocks.length} from news`);
+
+    // Source 2: Watchlist
+    console.log('   Source 2: Watchlist...');
+    this.WATCHLIST.forEach(s => discoveredStocks.add(s));
+    console.log(`   - Added ${this.WATCHLIST.length} from watchlist`);
+
+    // Source 3: Top % movers (>|8%|) + unusual volume
+    console.log('   Source 3: Top movers & volume spikes...');
+    const movers = await this.getTopMoversAndVolumeSpikes();
+    movers.forEach(s => discoveredStocks.add(s));
+    console.log(`   - Found ${movers.length} movers/volume spikes`);
+
+    return Array.from(discoveredStocks);
+  }
+
+  /**
+   * Get top % movers (>|8%|) and unusual volume stocks from watchlist
+   */
+  private async getTopMoversAndVolumeSpikes(): Promise<string[]> {
+    const moversAndSpikes: string[] = [];
+
+    // Check watchlist stocks for big moves and volume spikes
+    for (const symbol of this.WATCHLIST.slice(0, 30)) { // Check first 30 from watchlist
+      try {
+        const priceData = await this.getPriceDataForSymbol(symbol);
+        if (priceData.length < 2) continue;
+
+        const dayChange = this.calculateDayOverDayChange(priceData);
+
+        if (dayChange && Math.abs(dayChange) > 8) {
+          moversAndSpikes.push(symbol);
+          console.log(`      ${symbol}: ${dayChange > 0 ? '+' : ''}${dayChange.toFixed(1)}% (big move)`);
+        }
+      } catch (error) {
+        // Silently skip errors for individual stocks
+      }
+    }
+
+    return moversAndSpikes;
   }
 
   /**
@@ -143,79 +220,123 @@ export class MoonshotAnalysisService {
   }
 
   /**
-   * Search for stocks by query
+   * Search for stocks by query (Brave Search with SerpAPI fallback)
    */
   private async searchStocksByQuery(query: string): Promise<string[]> {
-    if (!this.braveApiKey) {
-      console.warn('No Brave API key, using watchlist only');
-      return [];
-    }
-
-    try {
-      const response = await axios.get('https://api.search.brave.com/res/v1/web/search', {
-        headers: {
-          'Accept': 'application/json',
-          'Accept-Encoding': 'gzip',
-          'X-Subscription-Token': this.braveApiKey
-        },
-        params: {
-          q: query,
-          count: 10,
-          freshness: 'pd' // Past day
-        }
-      });
-
-      const results = response.data?.web?.results || [];
-      const stockSymbols = new Set<string>();
-
-      // Extract stock symbols from results
-      results.forEach((result: any) => {
-        const text = `${result.title} ${result.description}`.toUpperCase();
-
-        // Look for stock ticker patterns (uppercase 2-5 letters)
-        const tickerMatches = text.match(/\b[A-Z]{2,5}\b/g) || [];
-
-        tickerMatches.forEach((ticker: string) => {
-          // Filter out common words
-          if (!['NYSE', 'NASDAQ', 'USD', 'EUR', 'GBP', 'CEO', 'CFO', 'IPO', 'ETF'].includes(ticker)) {
-            if (this.WATCHLIST.includes(ticker)) {
-              stockSymbols.add(ticker);
-            }
-          }
+    // Try Brave Search first
+    if (this.braveApiKey) {
+      try {
+        const response = await axios.get('https://api.search.brave.com/res/v1/web/search', {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip',
+            'X-Subscription-Token': this.braveApiKey
+          },
+          params: {
+            q: query,
+            count: 10,
+            freshness: 'pd' // Past day
+          },
+          timeout: 8000
         });
-      });
 
-      return Array.from(stockSymbols);
-    } catch (error) {
-      console.error('Brave search error:', error);
-      return [];
+        const results = response.data?.web?.results || [];
+        if (results.length > 0) {
+          console.log(`   Brave Search: Found ${results.length} results for "${query}"`);
+          return this.extractTickersFromResults(results);
+        }
+      } catch (error: any) {
+        if (error.response?.status === 429) {
+          console.log(`   Brave Search rate limited, trying SerpAPI fallback...`);
+        } else {
+          console.error('Brave search error:', error.message);
+        }
+      }
     }
+
+    // Fallback to SerpAPI
+    if (this.serpApiKey) {
+      try {
+        const response = await axios.get('https://serpapi.com/search', {
+          params: {
+            q: query,
+            api_key: this.serpApiKey,
+            engine: 'google_news',
+            num: 10
+          },
+          timeout: 8000
+        });
+
+        const results = response.data?.news_results || [];
+        if (results.length > 0) {
+          console.log(`   SerpAPI: Found ${results.length} results for "${query}"`);
+          return this.extractTickersFromResults(results);
+        }
+      } catch (error: any) {
+        console.error('SerpAPI error:', error.message);
+      }
+    }
+
+    console.warn(`   No search results for "${query}" - using watchlist only`);
+    return [];
   }
 
   /**
-   * Pre-qualification filter
+   * Extract stock tickers from search results
+   */
+  private extractTickersFromResults(results: any[]): string[] {
+    const stockSymbols = new Set<string>();
+
+    results.forEach((result: any) => {
+      const text = `${result.title || ''} ${result.description || result.snippet || ''}`.toUpperCase();
+
+      // Look for stock ticker patterns (uppercase 2-5 letters)
+      const tickerMatches = text.match(/\b[A-Z]{2,5}\b/g) || [];
+
+      tickerMatches.forEach((ticker: string) => {
+        // Filter out common words
+        if (!['NYSE', 'NASDAQ', 'USD', 'EUR', 'GBP', 'CEO', 'CFO', 'IPO', 'ETF', 'NEWS'].includes(ticker)) {
+          if (this.WATCHLIST.includes(ticker)) {
+            stockSymbols.add(ticker);
+          }
+        }
+      });
+    });
+
+    return Array.from(stockSymbols);
+  }
+
+  /**
+   * STEP 2: Pre-qualification filter (relaxed liquidity)
    */
   private async passesPreQualification(
     symbol: string,
+    currentPrice: number,
     marketCap?: number,
     avgVolume?: number,
     cashRunway?: number
   ): Promise<boolean> {
-    // Market Cap ≥ $250M
-    if (marketCap && marketCap < 250_000_000) {
-      console.log(`   ${symbol} failed: Market cap $${(marketCap / 1_000_000).toFixed(0)}M < $250M`);
+    // Price ≥ $1
+    if (currentPrice < 1) {
+      console.log(`   ${symbol} failed: Price $${currentPrice.toFixed(2)} < $1.00`);
       return false;
     }
 
-    // Liquidity: avg vol > 200k shares/day
-    if (avgVolume && avgVolume < 200_000) {
-      console.log(`   ${symbol} failed: Avg volume ${(avgVolume / 1000).toFixed(0)}k < 200k`);
+    // Market Cap ≥ $100M
+    if (marketCap && marketCap < 100_000_000) {
+      console.log(`   ${symbol} failed: Market cap $${(marketCap / 1_000_000).toFixed(0)}M < $100M`);
       return false;
     }
 
-    // Cash Runway ≥ 9 months
-    if (cashRunway !== undefined && cashRunway < 9) {
-      console.log(`   ${symbol} failed: Cash runway ${cashRunway} months < 9 months`);
+    // Liquidity: avg vol ≥ 100k shares/day
+    if (avgVolume && avgVolume < 100_000) {
+      console.log(`   ${symbol} failed: Avg volume ${(avgVolume / 1000).toFixed(0)}k < 100k`);
+      return false;
+    }
+
+    // Cash Runway ≥ 3 months (only fail if critically low)
+    if (cashRunway !== undefined && cashRunway < 3) {
+      console.log(`   ${symbol} failed: Cash runway ${cashRunway} months < 3 months`);
       return false;
     }
 
@@ -241,9 +362,10 @@ export class MoonshotAnalysisService {
       const priceData = await this.getPriceDataForSymbol(symbol);
       const fundamentalData = await this.getFundamentalData(symbol);
 
-      // Pre-qualification filter
+      // STEP 2: Pre-qualification filter
       const passesFilter = await this.passesPreQualification(
         symbol,
+        researchData.currentPrice,
         fundamentalData.marketCap,
         fundamentalData.avgVolume,
         fundamentalData.cashRunway
@@ -254,14 +376,32 @@ export class MoonshotAnalysisService {
         return null;
       }
 
-      // Analyze news for rumors, politics, tariffs
+      // STEP 3: Score each ticker
+      // Analyze news for rumors, politics, tariffs (last 72h)
       const newsAnalysis = this.analyzeNewsContent(researchData.news);
 
       // Get technical analysis
       const technicalIndicators = this.technicalService.analyzeTechnical(priceData);
       const technicalScore = this.technicalService.calculateTechnicalScore(technicalIndicators, researchData.currentPrice);
 
-      // Detect catalyst window
+      // STEP 4: Catalyst OR Rumor Gate
+      // Skip gate if using minimal news (Brave Search rate limited)
+      const usingMinimalNews = researchData.news.length <= 2 &&
+        researchData.news.every(n => n.url.includes('finance.yahoo.com'));
+
+      if (!usingMinimalNews) {
+        const catalyst = this.detectCatalyst(researchData.news);
+        const hasHotRumor = newsAnalysis.rumorsPoliticsTariffsScore >= 40;
+
+        if (!catalyst.hasCatalyst && !hasHotRumor) {
+          console.log(`   ${symbol} failed gate: No catalyst <30 days AND rumor score ${newsAnalysis.rumorsPoliticsTariffsScore.toFixed(1)} < 40`);
+          return null;
+        }
+        console.log(`   ${symbol} passed gate: ${catalyst.hasCatalyst ? 'Has catalyst' : `Rumor score ${newsAnalysis.rumorsPoliticsTariffsScore.toFixed(1)} ≥ 40`}`);
+      } else {
+        console.log(`   ${symbol} bypassing gate (using minimal news due to rate limit)`);
+      }
+
       const catalyst = this.detectCatalyst(researchData.news);
 
       // Calculate event sentiment
@@ -273,32 +413,63 @@ export class MoonshotAnalysisService {
         newsAnalysis.newsScore
       );
 
-      // Calculate weighted moonshot score
+      // Calculate weighted moonshot score with dynamic rebalancing
       const rumorsPoliticsTariffsScore = newsAnalysis.rumorsPoliticsTariffsScore;
       const newsScore = newsAnalysis.newsScore;
 
+      // Dynamic rebalancing: if rumors/politics/tariffs are weak, rely more on technical + news
+      let rumorWeight: number;
+      let technicalWeight: number;
+      let newsWeight: number;
+
+      if (rumorsPoliticsTariffsScore < 20) {
+        // Weak rumors → rebalance to Technical 45%, News 35%, Rumors 20%
+        rumorWeight = 0.20;
+        technicalWeight = 0.45;
+        newsWeight = 0.35;
+      } else {
+        // Strong rumors → standard weighting
+        rumorWeight = 0.50;
+        technicalWeight = 0.25;
+        newsWeight = 0.25;
+      }
+
       const moonshotScore = (
-        rumorsPoliticsTariffsScore * 0.5 +
-        technicalScore * 0.25 +
-        newsScore * 0.25
+        rumorsPoliticsTariffsScore * rumorWeight +
+        technicalScore * technicalWeight +
+        newsScore * newsWeight
       );
 
+      // Calculate volume and momentum indicators
+      const volumeRatio = fundamentalData.currentVolume && fundamentalData.avgVolume
+        ? fundamentalData.currentVolume / fundamentalData.avgVolume
+        : undefined;
+      const unusualVolume = volumeRatio ? volumeRatio > 2.0 : false; // STEP 5: vol > 2x avg
+      const dayOverDayChange = this.calculateDayOverDayChange(priceData);
+
       console.log(`   Scores for ${symbol}:
-   - Rumors/Politics/Tariffs: ${rumorsPoliticsTariffsScore.toFixed(1)} (50% weight)
-   - Technical: ${technicalScore.toFixed(1)} (25% weight)
-   - News: ${newsScore.toFixed(1)} (25% weight)
-   - TOTAL: ${moonshotScore.toFixed(1)}`);
+   - Rumors/Politics/Tariffs: ${rumorsPoliticsTariffsScore.toFixed(1)} (${(rumorWeight * 100).toFixed(0)}% weight)
+   - Technical: ${technicalScore.toFixed(1)} (${(technicalWeight * 100).toFixed(0)}% weight)
+   - News: ${newsScore.toFixed(1)} (${(newsWeight * 100).toFixed(0)}% weight)
+   - TOTAL: ${moonshotScore.toFixed(1)}
+   - Day/Day Change: ${dayOverDayChange ? dayOverDayChange.toFixed(1) : 'N/A'}%
+   - Volume Ratio: ${volumeRatio ? volumeRatio.toFixed(1) : 'N/A'}x`);
 
-      // Only include if score is high enough AND has valid catalyst
-      if (moonshotScore < 30) {
-        console.log(`   Score ${moonshotScore.toFixed(1)} below threshold of 30`);
+      // Classify into tiers
+      const tier = this.classifyTier(
+        moonshotScore,
+        catalyst,
+        newsAnalysis,
+        unusualVolume,
+        dayOverDayChange
+      );
+
+      if (!tier) {
+        console.log(`   Did not qualify for any tier`);
         return null;
       }
 
-      if (!catalyst.hasCatalyst) {
-        console.log(`   No valid catalyst window detected`);
-        return null;
-      }
+      console.log(`   Qualified as Tier ${tier}`);
 
       // Calculate volatility
       const volatility = this.calculateVolatility(priceData);
@@ -328,6 +499,10 @@ export class MoonshotAnalysisService {
         eventSentiment,
         catalystDate: catalyst.date,
         recommendation,
+        tier,
+        unusualVolume,
+        volumeRatio,
+        dayOverDayChange,
         keyReason,
         rumorSignals: newsAnalysis.rumors,
         politicalFactors: newsAnalysis.political,
@@ -379,7 +554,10 @@ export class MoonshotAnalysisService {
       'sources say', 'unconfirmed', 'buzz', 'chatter', 'allegedly',
       'acquisition target', 'buyout', 'merger talks', 'exploring sale',
       'could be', 'may be', 'potential', 'considering', 'talks', 'deal',
-      'partnership', 'acquisition', 'takeover', 'bid', 'offer'
+      'partnership', 'acquisition', 'takeover', 'bid', 'offer',
+      // M&A synonym cluster
+      'strategic alternatives', 'exploring options', 'go-private', 'go private',
+      'approached', 'unsolicited offer', 'hostile takeover', 'friendly deal'
     ];
 
     const politicalKeywords = [
@@ -388,14 +566,22 @@ export class MoonshotAnalysisService {
       'investigation', 'hearing', 'committee', 'biden', 'trump',
       'election', 'political', 'federal', 'white house', 'lawsuit',
       'lawsuit', 'court', 'legal', 'compliance', 'filing', 'regulator',
-      'agency', 'rule', 'law', 'ban', 'restrict'
+      'agency', 'rule', 'law', 'ban', 'restrict',
+      // FDA synonym cluster
+      'phase 2 data', 'phase 3 data', 'phase 2/3', 'phase ii', 'phase iii',
+      'endpoint met', 'primary endpoint', 'no safety signal', 'safety signal',
+      'advisory committee', 'adcom', 'pdufa date', 'clinical trial results'
     ];
 
     const tariffKeywords = [
       'tariff', 'trade war', 'import', 'export', 'customs', 'duty',
       'trade policy', 'china', 'sanctions', 'trade deal',
       'trade tensions', 'protectionism', 'wto', 'nafta', 'usmca',
-      'trade', 'global', 'international', 'supply chain', 'manufacturing'
+      'trade', 'global', 'international', 'supply chain', 'manufacturing',
+      // Tariff synonym cluster
+      'export controls', 'export restriction', 'itc ruling', 'itc investigation',
+      'commerce department', 'section 301', 'antidumping', 'countervailing',
+      'trade remedy', 'entity list', 'denied parties'
     ];
 
     let rumorScore = 0;
@@ -599,6 +785,7 @@ export class MoonshotAnalysisService {
   private async getFundamentalData(symbol: string): Promise<{
     marketCap?: number;
     avgVolume?: number;
+    currentVolume?: number;
     cashRunway?: number;
     shortInterest?: number;
   }> {
@@ -612,6 +799,7 @@ export class MoonshotAnalysisService {
 
       const marketCap = summaryDetail?.marketCap?.raw;
       const avgVolume = summaryDetail?.averageVolume?.raw;
+      const currentVolume = summaryDetail?.volume?.raw;
       const shortInterest = keyStats?.shortPercentOfFloat?.raw ? keyStats.shortPercentOfFloat.raw * 100 : undefined;
 
       // Estimate cash runway (totalCash / quarterlyCashFlow * 3 = months)
@@ -626,6 +814,7 @@ export class MoonshotAnalysisService {
       return {
         marketCap,
         avgVolume,
+        currentVolume,
         cashRunway,
         shortInterest
       };
@@ -785,5 +974,46 @@ export class MoonshotAnalysisService {
 
     // Otherwise WATCHLIST
     return 'WATCHLIST';
+  }
+
+  /**
+   * STEP 5: Classify stock into Tier A or Tier B
+   */
+  private classifyTier(
+    moonshotScore: number,
+    catalyst: { hasCatalyst: boolean; date?: string; type?: string },
+    newsAnalysis: { rumors: any[]; rumorsPoliticsTariffsScore: number },
+    unusualVolume: boolean,
+    dayOverDayChange?: number
+  ): 'A' | 'B' | null {
+    // Tier A: Score ≥ 40 (lowered from 50 to account for minimal news scenarios)
+    if (moonshotScore >= 40) {
+      return 'A';
+    }
+
+    // Tier B: Score ≥ 25 AND (%move > 5% OR vol > 2x avg)
+    // Relaxed thresholds when volume data unavailable
+    if (moonshotScore >= 25) {
+      const hasBigMove = dayOverDayChange !== undefined && Math.abs(dayOverDayChange) > 5;
+
+      if (unusualVolume || hasBigMove) {
+        return 'B';
+      }
+    }
+
+    // Doesn't qualify for any tier
+    return null;
+  }
+
+  /**
+   * Calculate day-over-day price change percentage
+   */
+  private calculateDayOverDayChange(priceData: any[]): number | undefined {
+    if (priceData.length < 2) return undefined;
+
+    const currentPrice = priceData[priceData.length - 1].price;
+    const previousPrice = priceData[priceData.length - 2].price;
+
+    return ((currentPrice - previousPrice) / previousPrice) * 100;
   }
 }

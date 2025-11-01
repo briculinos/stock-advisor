@@ -123,4 +123,12 @@ export const syncPortfolio = async (followedStocks: any[], ownedStocks: any[]) =
   return response.data;
 };
 
+export const getMoonshotScore = async (symbol: string, companyName?: string) => {
+  const response = await api.post('/api/stock/moonshot-score', {
+    symbol,
+    companyName,
+  });
+  return response.data;
+};
+
 export { api };
